@@ -630,7 +630,11 @@ class TextBoxObject(QLabel):
         self.move(left, top)
 
         if duration:
-            QTimer.singleShot(int(duration * 1000), self.hide_me)
+            QTimer.singleShot(
+                int(duration * 1000), 
+                self, 
+                self.hide_me
+            )
 
     def hide_me(self):
         try:
@@ -685,7 +689,11 @@ class ExternalImageObject(QLabel):
         self.move(left, top)
 
         if duration:
-            QTimer.singleShot(int(duration * 1000), self.hide)
+            QTimer.singleShot(
+                int(duration * 1000), 
+                self, 
+                self.hide
+            )
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         super(ExternalImageObject, self).mousePressEvent(event)
@@ -723,6 +731,9 @@ class VideoObject(QVideoWidget):
     ):
         super(VideoObject, self).__init__(parent=parent)
         self.video_path: Path = video_path
+        self.player = None
+        self.audio_output = None
+        self.fallback_mode = False
 
         if loop:
             log.warning(
@@ -736,16 +747,31 @@ class VideoObject(QVideoWidget):
         style_sheet += " }"
         self.setStyleSheet(style_sheet)
 
-        url = QUrl.fromLocalFile(str(video_path.absolute()))
-
-        self.player = QMediaPlayer(self.parent())
-        self.player.setSource(url)
-        self.player.setVideoOutput(self)
-        self.player.setPosition(start)
-
-        audioOutput = QAudioOutput()
-        self.player.setAudioOutput(audioOutput)
-        audioOutput.setVolume(volume * 100)
+        # Try to create QMediaPlayer with error handling
+        try:
+            from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+            
+            url = QUrl.fromLocalFile(str(video_path.absolute()))
+            
+            self.player = QMediaPlayer(self.parent())
+            self.player.setSource(url)
+            self.player.setVideoOutput(self)
+            self.player.setPosition(start)
+            
+            # Test audio output availability
+            self.audio_output = QAudioOutput()
+            if self.audio_output.isAvailable():
+                self.player.setAudioOutput(self.audio_output)
+                self.audio_output.setVolume(volume * 100)
+                log.debug("Video audio output initialized successfully")
+            else:
+                log.warning("Audio output not available for video playback")
+                self.fallback_mode = True
+                
+        except Exception as e:
+            log.error(f"Failed to initialize video player: {e}")
+            log.info("Video playback will be attempted with limited functionality")
+            self.fallback_mode = True
 
         if size:
             self.setFixedSize(size)
@@ -756,25 +782,39 @@ class VideoObject(QVideoWidget):
         self.show()
         self.activateWindow()
         self.raise_()
-        self.play()
+        
+        # Only attempt to play if we have a working player
+        if self.player and not self.fallback_mode:
+            self.play()
+        else:
+            log.warning(f"Video {video_path.name} could not be played due to multimedia backend issues")
 
     def play(self):
-        try:
-            self.player.play()
-        except:
-            pass
+        if self.player and not self.fallback_mode:
+            try:
+                self.player.play()
+            except Exception as e:
+                log.error(f"Error playing video: {e}")
+        else:
+            log.warning("Video player not available or in fallback mode")
 
     def pause(self):
-        try:
-            self.player.pause()
-        except:
-            pass
+        if self.player and not self.fallback_mode:
+            try:
+                self.player.pause()
+            except Exception as e:
+                log.error(f"Error pausing video: {e}")
+        else:
+            log.warning("Video player not available or in fallback mode")
 
     def stop(self):
-        try:
-            self.player.stop()
-        except:
-            pass
+        if self.player and not self.fallback_mode:
+            try:
+                self.player.stop()
+            except Exception as e:
+                log.error(f"Error stopping video: {e}")
+        else:
+            log.warning("Video player not available or in fallback mode")
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.stop()

@@ -118,40 +118,62 @@ VALID_ACTIONS = [
 class SoundPlayer:
     def __init__(self, sound_file: str, volume: int = 50, loop=False):
         self._sound_file = sound_file
-        self._url = QUrl.fromLocalFile(self._sound_file)
-        self._audio_output = QAudioOutput()
-        self._audio_output.setVolume(volume)  # Set the initial volume
-        self._player = QMediaPlayer()
-        self._player.setAudioOutput(self._audio_output)
+        self._volume = volume / 100.0  # Convert to 0-1 range
         self._loop = loop
-
-        if self._loop:
-            # Connect the media player's positionChanged signal to handle looping
-            self._player.positionChanged.connect(self.handle_position_changed)
+        self._player = None
+        
+        # Import the cross-platform audio player
+        from gemsrun.utils.audioutils import CrossPlatformAudioPlayer
+        
+        try:
+            self._player = CrossPlatformAudioPlayer(
+                sound_file=sound_file,
+                volume=self._volume,
+                loop=loop
+            )
+            log.debug(f"Created cross-platform audio player for {sound_file}")
+        except Exception as e:
+            log.error(f"Failed to create audio player: {e}")
+            self._player = None
 
     def play(self):
-        self._player.setSource(self._url)
-        self._player.play()
+        if self._player:
+            try:
+                success = self._player.play()
+                if not success:
+                    log.warning(f"Audio playback failed for {self._sound_file}")
+            except Exception as e:
+                log.error(f"Error playing audio: {e}")
+        else:
+            log.error("No audio player available")
 
     def stop(self):
-        self._player.stop()
+        if self._player:
+            try:
+                self._player.stop()
+            except Exception as e:
+                log.error(f"Error stopping audio: {e}")
 
     def duration(self) -> int:
-        return self._player.duration()
+        if self._player:
+            try:
+                return self._player.duration()
+            except Exception as e:
+                log.error(f"Error getting duration: {e}")
+        return 0
 
     def is_playing(self) -> bool:
-        return self._player.isPlaying()
+        if self._player:
+            try:
+                return self._player.is_playing()
+            except Exception as e:
+                log.error(f"Error checking playing state: {e}")
+        return False
 
     def handle_position_changed(self, position):
-        # Get the total duration of the media in milliseconds
-        total_duration_ms = self._player.duration()
-
-        # Calculate the current position within the loop duration
-        loop_position = position % total_duration_ms
-
-        # If the loop position is close to the end, seek back to the beginning
-        if loop_position > total_duration_ms - 100:
-            self._player.setPosition(0)
+        # This method is kept for compatibility but may not be used
+        # depending on the audio backend
+        pass
 
 
 @lru_cache
@@ -188,7 +210,6 @@ class ViewPanel(QWidget):
         self.sound_controls = dict()  # indexed by filename stem
         self.video_controls = dict()  # indexed by filename stem
         self.text_boxes = dict()  # indexed by hash
-        self.action_timers = list()
 
         self.nav_extent: int = 30
 
@@ -255,7 +276,11 @@ class ViewPanel(QWidget):
         """
         if self.sleep_event_loop.isRunning():
             self.sleep_event_loop.quit()
-        QTimer.singleShot(int(msec), self.sleep_event_loop.quit)
+        QTimer.singleShot(
+            int(msec), 
+            self,
+            self.sleep_event_loop.quit
+        )
         self.sleep_event_loop.exec()
 
     def init_ui(self):
@@ -544,9 +569,9 @@ class ViewPanel(QWidget):
         log.debug(f'SETTING A TIMER TO "{action}" in {when_secs * 1000} ms if condition "{condition}" is met.')
         timer = QTimer.singleShot(
             int(when_secs * 1000),
+            self,
             partial(self.do_action, condition=condition, action=action),
         )
-        self.action_timers.append(timer)
 
     def start_timers(self):
         """Launch timers for any view or env actions with timed triggers"""
@@ -654,12 +679,6 @@ class ViewPanel(QWidget):
             event.Skip()
 
     def cleanup_view(self):
-        # Shutdown Timers
-        for timer in self.action_timers:
-            try:
-                timer.stop()
-            except:
-                ...
 
         # Remove Objects
         # NOTE: Unlike in wx, this cleanup might not be necessary!
@@ -1540,6 +1559,23 @@ class ViewPanel(QWidget):
             self.play_sound(sound_file=sound_file, asynchronous=asynchronous, loop=loop, volume=volume)
         except Exception as e:
             log.error(f'Error playing audio file {sound_file}: {e}')
+            # Provide helpful diagnostic information
+            self._log_audio_diagnostics()
+
+    def _log_audio_diagnostics(self):
+        """Log diagnostic information about audio backends"""
+        try:
+            from gemsrun.utils.audioutils import get_audio_backend_info
+            info = get_audio_backend_info()
+            log.info(f"Audio backend diagnostics: {info}")
+            
+            if not info['available_backends']:
+                log.warning("No audio backends available. Consider installing:")
+                log.warning("- PulseAudio (paplay) for Linux")
+                log.warning("- ALSA utilities (aplay) for Linux")
+                log.warning("- FFmpeg (ffplay) for cross-platform support")
+        except Exception as e:
+            log.error(f"Could not get audio diagnostics: {e}")
 
     def StopSound(self, sound_file: str):
         """
