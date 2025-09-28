@@ -28,7 +28,7 @@ It limits arguments to constants of basic types such as ints, float, strings, et
 but only those that only contain constants (checks recursively).
 """
 
-FUNK_PATTERN = re.compile("([\w]+)\((.*?), (.*?)\)$")
+FUNK_PATTERN = re.compile(r"(\w+)\((.*?), (.*?)\)$")
 
 
 def get_param(param: str) -> str:
