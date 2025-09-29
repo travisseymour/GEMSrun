@@ -46,9 +46,9 @@ def setup_data_logging(user: str, debug: bool) -> Path:
         log_format = "{message}"
 
     # setup logfile sink
-    data_path = Path(Path.home(), "Documents", "GEMS", "Data")  # TODO: Add Option To Move This
-    Path.mkdir(Path(data_path).parent, exist_ok=True)
-    Path.mkdir(Path(data_path), exist_ok=True)
+    data_path = Path.home() / "Documents" / "GEMS" / "Data"  # TODO: Add Option To Move This
+    data_path.parent.mkdir(exist_ok=True)
+    data_path.mkdir(exist_ok=True)
     dt = datetime.strftime(datetime.now(), "%m%d%y_%H%M%S")
     log_file = Path(data_path, f"{app_short_name}_v{__version__.replace('.', '')}_{user}_{dt}.txt")
 
@@ -102,7 +102,7 @@ def setup_session(args: Munch) -> Munch:
             None,
             "Test of Data Storage Failed",
             f"There was a problem with the expected data output folder "
-            f"({Path(Path('~', 'Documents').expanduser(), 'GemsRunData')})\n{e}",
+            f"({Path.home() / 'Documents' / 'GEMS' / 'Data'})\n{e}",
             QMessageBox.StandardButton.Ok,
         )
         return fail
