@@ -330,6 +330,7 @@ class CrossPlatformAudioPlayer(QObject):
     
     def _on_playback_state_changed(self, state):
         """Handle QMediaPlayer playback state changes"""
+        from PySide6.QtMultimedia import QMediaPlayer
         if state == QMediaPlayer.PlaybackState.StoppedState:
             self.is_playing_flag = False
             if not self.loop:
