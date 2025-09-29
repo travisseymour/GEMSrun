@@ -95,6 +95,14 @@ class CrossPlatformAudioPlayer(QObject):
                 backends = [AudioBackend.SYSTEM_COMMAND] + [b for b in backends if b != AudioBackend.SYSTEM_COMMAND]
             log.debug(f"macOS detected, backends after reorder: {backends}")
         
+        # On Windows, prioritize system commands over Qt multimedia
+        elif platform.system() == "Windows" and backends:
+            log.debug(f"Windows detected, backends before reorder: {backends}")
+            if AudioBackend.SYSTEM_COMMAND in backends:
+                # Move system command to front for Windows
+                backends = [AudioBackend.SYSTEM_COMMAND] + [b for b in backends if b != AudioBackend.SYSTEM_COMMAND]
+            log.debug(f"Windows detected, backends after reorder: {backends}")
+        
         return backends
     
     def _test_system_audio_commands(self) -> bool:
@@ -108,14 +116,25 @@ class CrossPlatformAudioPlayer(QObject):
                                           capture_output=True, 
                                           timeout=2)
                     # afplay will error without a file argument, but that means it exists
+                    log.debug(f"Found afplay command on macOS")
                     return True
+                elif cmd == "powershell":
+                    # Check if powershell is available
+                    result = subprocess.run([cmd, "-Command", "Get-Host"], 
+                                          capture_output=True, 
+                                          timeout=2)
+                    if result.returncode == 0:
+                        log.debug(f"Found powershell command on Windows")
+                        return True
                 else:
                     result = subprocess.run([cmd, "--version"], 
                                           capture_output=True, 
                                           timeout=2)
                     if result.returncode == 0:
+                        log.debug(f"Found {cmd} command")
                         return True
-            except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+            except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError) as e:
+                log.debug(f"Command {cmd} not available: {e}")
                 continue
         return False
     
@@ -301,8 +320,10 @@ class CrossPlatformAudioPlayer(QObject):
                     elif cmd == "powershell":
                         # System.Media.SoundPlayer only supports WAV; skip if not WAV
                         if not is_wav:
+                            log.debug("Skipping PowerShell (only supports WAV), will try ffplay for MP3/other")
                             continue
-                        args = ["powershell", "-NoProfile", "-NonInteractive", "-c", f"(New-Object Media.SoundPlayer '{sound_path}').PlaySync()"]
+                        # Use -ExecutionPolicy Bypass to avoid policy restrictions
+                        args = ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", f"(New-Object Media.SoundPlayer '{sound_path}').PlaySync()"]
                     else:
                         continue
                     
@@ -310,10 +331,14 @@ class CrossPlatformAudioPlayer(QObject):
                     popen_kwargs: Dict[str, Any] = dict(stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     if platform.system().lower() == "windows":
                         try:
-                            # CREATE_NO_WINDOW
-                            popen_kwargs["creationflags"] = 0x08000000
-                        except Exception:
-                            ...
+                            import subprocess
+                            # CREATE_NO_WINDOW to prevent console window flashing
+                            popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+                            log.debug(f"Windows: Using CREATE_NO_WINDOW for {cmd}")
+                        except Exception as e:
+                            log.debug(f"Windows: Could not set CREATE_NO_WINDOW: {e}")
+                    
+                    log.info(f"Starting audio command: {' '.join(args)}")
                     self.process = subprocess.Popen(args, **popen_kwargs)
                     
                     self.is_playing_flag = True
