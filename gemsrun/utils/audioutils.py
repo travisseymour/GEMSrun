@@ -330,15 +330,18 @@ class CrossPlatformAudioPlayer(QObject):
                     else:
                         continue
                     
-                    # Start process (avoid" flashing console on Windows)
+                    # Start process (avoid flashing console on Windows)
                     popen_kwargs: Dict[str, Any] = dict(stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     if platform.system().lower() == "windows":
                         try:
                             # CREATE_NO_WINDOW to prevent console window flashing
                             popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-                            log.debug(f"Windows: Using CREATE_NO_WINDOW for {cmd}")
+                            popen_kwargs["startupinfo"] = subprocess.STARTUPINFO()
+                            popen_kwargs["startupinfo"].dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                            popen_kwargs["startupinfo"].wShowWindow = subprocess.SW_HIDE
+                            log.debug(f"Windows: Using CREATE_NO_WINDOW + STARTUPINFO for {cmd}")
                         except Exception as e:
-                            log.debug(f"Windows: Could not set CREATE_NO_WINDOW: {e}")
+                            log.debug(f"Windows: Could not set window flags: {e}")
                     
                     log.info(f"Starting audio command: {' '.join(args)}")
                     self.process = subprocess.Popen(args, **popen_kwargs)
