@@ -57,7 +57,8 @@ class CrossPlatformAudioPlayer(QObject):
             # Try to create instances to test availability
             test_player = QMediaPlayer()
             test_output = QAudioOutput()
-            if test_player.hasAudio() and test_output.isAvailable():
+            # We cannot rely on hasAudio() here because no source is set yet; just ensure construction works
+            if test_output is not None and test_player is not None:
                 backends.append(AudioBackend.QMEDIAPLAYER)
                 log.debug("QMediaPlayer backend available")
         except Exception as e:
@@ -116,8 +117,24 @@ class CrossPlatformAudioPlayer(QObject):
             self.playback_error.emit(error_msg)
             return False
         
-        # Use the first available backend
-        backend = self.backends[0]
+        # Choose backend based on file type and availability
+        suffix = Path(self.sound_file).suffix.lower()
+        is_wav = suffix in [".wav", ".wave"]
+        is_short_effect_candidate = is_wav  # QSoundEffect is reliable for WAV only
+
+        preferred_order = []
+        if is_short_effect_candidate and AudioBackend.QSOUNDEFFECT in self.backends:
+            preferred_order.append(AudioBackend.QSOUNDEFFECT)
+        if AudioBackend.QMEDIAPLAYER in self.backends:
+            preferred_order.append(AudioBackend.QMEDIAPLAYER)
+        if AudioBackend.SYSTEM_COMMAND in self.backends:
+            preferred_order.append(AudioBackend.SYSTEM_COMMAND)
+
+        # Fallback to detected order if nothing matched
+        if not preferred_order:
+            preferred_order = self.backends[:]
+
+        backend = preferred_order[0]
         self.current_backend = backend
         
         try:
@@ -130,10 +147,16 @@ class CrossPlatformAudioPlayer(QObject):
         except Exception as e:
             log.error(f"Audio playback failed with backend {backend}: {e}")
             # Try next backend if available
-            if len(self.backends) > 1:
+            remaining = [b for b in preferred_order if b != backend]
+            if remaining:
                 log.info(f"Falling back to next available backend")
-                self.backends.pop(0)
-                return self.play()
+                # Temporarily set backends to remaining for this attempt
+                original = self.backends
+                self.backends = remaining
+                try:
+                    return self.play()
+                finally:
+                    self.backends = original
             else:
                 self.playback_error.emit(str(e))
                 return False
@@ -148,7 +171,8 @@ class CrossPlatformAudioPlayer(QObject):
             
             self.player = QMediaPlayer()
             audio_output = QAudioOutput()
-            audio_output.setVolume(self.volume * 100)
+            # QAudioOutput volume range is 0.0 - 1.0 in Qt6
+            audio_output.setVolume(float(self.volume))
             self.player.setAudioOutput(audio_output)
             
             url = QUrl.fromLocalFile(self.sound_file)
@@ -182,10 +206,12 @@ class CrossPlatformAudioPlayer(QObject):
             
             self.player = QSoundEffect()
             self.player.setSource(QUrl.fromLocalFile(self.sound_file))
-            self.player.setVolume(self.volume)
+            # QSoundEffect volume range is 0.0 - 1.0
+            self.player.setVolume(float(self.volume))
             
             # Connect signals
-            self.player.playingChanged.connect(self._on_playing_changed)
+            # Some PySide6 builds emit playingChanged() without args; accept optional param
+            self.player.playingChanged.connect(lambda *args: self._on_playing_changed(args[0] if args else self.player.isPlaying()))
             
             self.player.play()
             self.is_playing_flag = True
@@ -206,6 +232,20 @@ class CrossPlatformAudioPlayer(QObject):
             if not sound_path.exists():
                 raise FileNotFoundError(f"Audio file not found: {self.sound_file}")
             
+            # Prefer commands based on file type
+            suffix = sound_path.suffix.lower()
+            is_wav = suffix in [".wav", ".wave"]
+
+            # Reorder for better success probability
+            def order_cmds(cmds: list) -> list:
+                if is_wav:
+                    return cmds
+                # mp3/other: prefer ffplay/afplay over paplay/aplay
+                priority = ["ffplay", "afplay", "play", "paplay", "aplay", "powershell"]
+                return [c for c in priority if c in cmds]
+
+            commands = order_cmds(commands)
+
             # Try each command until one works
             for cmd in commands:
                 try:
@@ -220,14 +260,22 @@ class CrossPlatformAudioPlayer(QObject):
                     elif cmd == "play":
                         args = ["play", str(sound_path)]
                     elif cmd == "powershell":
-                        args = ["powershell", "-c", f"(New-Object Media.SoundPlayer '{sound_path}').PlaySync()"]
+                        # System.Media.SoundPlayer only supports WAV; skip if not WAV
+                        if not is_wav:
+                            continue
+                        args = ["powershell", "-NoProfile", "-NonInteractive", "-c", f"(New-Object Media.SoundPlayer '{sound_path}').PlaySync()"]
                     else:
                         continue
                     
-                    # Start process
-                    self.process = subprocess.Popen(args, 
-                                                  stdout=subprocess.DEVNULL, 
-                                                  stderr=subprocess.DEVNULL)
+                    # Start process (avoid flashing console on Windows)
+                    popen_kwargs: Dict[str, Any] = dict(stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    if platform.system().lower() == "windows":
+                        try:
+                            # CREATE_NO_WINDOW
+                            popen_kwargs["creationflags"] = 0x08000000
+                        except Exception:
+                            ...
+                    self.process = subprocess.Popen(args, **popen_kwargs)
                     
                     self.is_playing_flag = True
                     
@@ -287,10 +335,11 @@ class CrossPlatformAudioPlayer(QObject):
             if not self.loop:
                 self.playback_finished.emit()
     
-    def _on_playing_changed(self, playing):
+    def _on_playing_changed(self, playing=None):
         """Handle QSoundEffect playing state changes"""
-        self.is_playing_flag = playing
-        if not playing and not self.loop:
+        is_playing = bool(playing) if playing is not None else bool(getattr(self.player, "isPlaying", lambda: False)())
+        self.is_playing_flag = is_playing
+        if not is_playing and not self.loop:
             self.playback_finished.emit()
     
     def _on_error_occurred(self, error, error_string):

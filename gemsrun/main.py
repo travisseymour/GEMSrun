@@ -18,17 +18,8 @@ from munch import Munch
 from gemsrun.session import sessionsetup as ssetup
 from gemsrun.gui.parawindow import ParamDialog
 
-# Determine the operating system
-os_name = platform.system()
-
-if os_name == "Linux":
-    os.environ["QT_MEDIA_BACKEND"] = "gstreamer"
-elif os_name == "Windows":
-    os.environ["QT_MEDIA_BACKEND"] = "windows"
-elif os_name == "Darwin":
-    os.environ["QT_MEDIA_BACKEND"] = "darwin"
-else:
-    print(f"Unsupported operating system: {os_name}")
+# Avoid forcing QT multimedia backend. Let Qt auto-detect best available plugins.
+# If users need to override, they can set QT_MEDIA_BACKEND in their environment before launch.
 
 
 def get_parser() -> optparse.OptionParser:
