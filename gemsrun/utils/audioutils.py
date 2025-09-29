@@ -216,10 +216,18 @@ class CrossPlatformAudioPlayer(QObject):
             self.player = QMediaPlayer()
             audio_output = QAudioOutput()
             
-            # Check if audio output is available
-            if not audio_output.isAvailable():
-                log.warning("QAudioOutput not available")
-                raise RuntimeError("QAudioOutput not available")
+            # Check if audio output is available (method varies by PySide6 version)
+            try:
+                if hasattr(audio_output, 'isAvailable') and not audio_output.isAvailable():
+                    log.warning("QAudioOutput not available")
+                    raise RuntimeError("QAudioOutput not available")
+            except AttributeError:
+                # Old PySide6 versions don't have isAvailable, check available devices instead
+                from PySide6.QtMultimedia import QMediaDevices
+                audio_devices = QMediaDevices.audioOutputs()
+                if len(audio_devices) == 0:
+                    log.warning("No audio output devices available")
+                    raise RuntimeError("No audio output devices available")
             
             # QAudioOutput volume range is 0.0 - 1.0 in Qt6
             audio_output.setVolume(float(self.volume))
@@ -233,7 +241,8 @@ class CrossPlatformAudioPlayer(QObject):
             self.player.errorOccurred.connect(self._on_error_occurred)
             
             log.info(f"QMediaPlayer: Playing {self.sound_file}, volume={self.volume}")
-            log.debug(f"Audio output available: {audio_output.isAvailable()}")
+            if hasattr(audio_output, 'isAvailable'):
+                log.debug(f"Audio output available: {audio_output.isAvailable()}")
             log.debug(f"Audio output volume: {audio_output.volume()}")
             log.debug(f"Media player has audio: {self.player.hasAudio()}")
             
@@ -327,11 +336,10 @@ class CrossPlatformAudioPlayer(QObject):
                     else:
                         continue
                     
-                    # Start process (avoid flashing console on Windows)
+                    # Start process (avoid" flashing console on Windows)
                     popen_kwargs: Dict[str, Any] = dict(stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     if platform.system().lower() == "windows":
                         try:
-                            import subprocess
                             # CREATE_NO_WINDOW to prevent console window flashing
                             popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
                             log.debug(f"Windows: Using CREATE_NO_WINDOW for {cmd}")
