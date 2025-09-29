@@ -54,6 +54,7 @@ def setup_data_logging(user: str, debug: bool) -> Path:
 
     if debug:
         # In debug mode, keep console output AND add file output
+        print(f'{log_file=}')
         log.add(
             #Path(data_path, log_file),
             log_file,
@@ -61,12 +62,16 @@ def setup_data_logging(user: str, debug: bool) -> Path:
             colorize=False,
             level="DEBUG",
         )
+        print('log added')
         # Console output with colors for debug mode
+        print('log_sink=sys.stderr')
         log.add(
             sys.stderr,
             format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{module}</cyan>:<cyan>{line}</cyan> | {message}",
             level="DEBUG",
         )
+        print('log added')
+
     else:
         log.remove()  # remove default logger
         log.add(
