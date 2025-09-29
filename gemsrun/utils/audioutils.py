@@ -87,21 +87,7 @@ class CrossPlatformAudioPlayer(QObject):
             backends.append(AudioBackend.SYSTEM_COMMAND)
             log.debug("System audio command backend available")
         
-        # On macOS, prioritize system commands if Qt multimedia is having issues
-        if platform.system() == "Darwin" and backends:
-            log.debug(f"macOS detected, backends before reorder: {backends}")
-            if AudioBackend.SYSTEM_COMMAND in backends:
-                # Move system command to front for macOS
-                backends = [AudioBackend.SYSTEM_COMMAND] + [b for b in backends if b != AudioBackend.SYSTEM_COMMAND]
-            log.debug(f"macOS detected, backends after reorder: {backends}")
-        
-        # On Windows, prioritize system commands over Qt multimedia
-        elif platform.system() == "Windows" and backends:
-            log.debug(f"Windows detected, backends before reorder: {backends}")
-            if AudioBackend.SYSTEM_COMMAND in backends:
-                # Move system command to front for Windows
-                backends = [AudioBackend.SYSTEM_COMMAND] + [b for b in backends if b != AudioBackend.SYSTEM_COMMAND]
-            log.debug(f"Windows detected, backends after reorder: {backends}")
+        # Note: Backend ordering is now handled in play() method based on file type and reliability
         
         return backends
     
@@ -164,13 +150,14 @@ class CrossPlatformAudioPlayer(QObject):
         is_wav = suffix in [".wav", ".wave"]
         is_short_effect_candidate = is_wav  # QSoundEffect is reliable for WAV only
 
+        # Always prioritize system commands for reliability across platforms
         preferred_order = []
+        if AudioBackend.SYSTEM_COMMAND in self.backends:
+            preferred_order.append(AudioBackend.SYSTEM_COMMAND)
         if is_short_effect_candidate and AudioBackend.QSOUNDEFFECT in self.backends:
             preferred_order.append(AudioBackend.QSOUNDEFFECT)
         if AudioBackend.QMEDIAPLAYER in self.backends:
             preferred_order.append(AudioBackend.QMEDIAPLAYER)
-        if AudioBackend.SYSTEM_COMMAND in self.backends:
-            preferred_order.append(AudioBackend.SYSTEM_COMMAND)
 
         # Fallback to detected order if nothing matched
         if not preferred_order:
@@ -489,5 +476,7 @@ def get_audio_backend_info() -> Dict[str, Any]:
     return {
         "available_backends": player.backends,
         "system": platform.system(),
-        "system_commands": player._get_system_audio_commands()
+        "system commands": player._get_system_audio_commands()
     }
+
+

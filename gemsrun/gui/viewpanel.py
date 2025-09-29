@@ -1552,11 +1552,18 @@ class ViewPanel(QWidget):
         if loop:
             log.warning('NOTE: the loop parameter of PlaySound is not yet implemented')
 
+        sound_path = Path(sound_file) if Path(sound_file).is_file() else Path(self.options.MediaPath, sound_file)
+        log.info(f"Requesting audio playback: {sound_path}")
+        
+        if not sound_path.exists():
+            log.error(f"Audio file does not exist: {sound_path}")
+            return
+
         log.info(dict(Kind='Action', Type='PlaySound', View=self.View.Name, **gu.func_params(), Target=None,
                       Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         try:
-            self.play_sound(sound_file=sound_file, asynchronous=asynchronous, loop=loop, volume=volume)
+            self.play_sound(sound_file=str(sound_path.resolve()), asynchronous=asynchronous, loop=loop, volume=volume)
         except Exception as e:
             log.error(f'Error playing audio file {sound_file}: {e}')
             # Provide helpful diagnostic information
