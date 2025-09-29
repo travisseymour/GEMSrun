@@ -17,11 +17,11 @@ from gemsrun import log
 # Try to import playsound3 for cross-platform audio playback
 try:
     import playsound3 as playsound
-    PLAYSOUND_PLAY_ASYNC = True
+    PLAYSOUND_AVAILABLE = True
     log.debug("playsound3 library available")
 except ImportError:
     playsound = None
-    PLAYSOUND_PLAY_ASYNC = False
+    PLAYSOUND_AVAILABLE = False
     log.debug("playsound3 library not available - pip install playsound3")
 
 
@@ -63,7 +63,7 @@ class CrossPlatformAudioPlayer(QObject):
         backends = []
         
         # Test playsound3 availability
-        if PLAYSOUND_PLAY_ASYNC and playsound:
+        if PLAYSOUND_AVAILABLE and playsound:
             backends.append(AudioBackend.PLAYSOUND3)
             log.debug("playsound3 backend available")
         
@@ -223,11 +223,9 @@ class CrossPlatformAudioPlayer(QObject):
             log.info(f"playsound3: Playing {self.sound_file}, volume={self.volume}")
             
             # playsound3 supports blocking/non-blocking and returns a player object
-            # Use play_async to get a player object we can potentially stop
-            self.process = playsound.play_async(
+            self.process = playsound.playsound(
                 self.sound_file, 
-                block=False,  # Non-blocking
-                volume=self.volume  # Volume control if supported
+                block=False,
             )
             
             if self.process is None:
