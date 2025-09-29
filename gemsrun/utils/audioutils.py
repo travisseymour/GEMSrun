@@ -234,7 +234,12 @@ class CrossPlatformAudioPlayer(QObject):
             self.player.setAudioOutput(audio_output)
             
             url = QUrl.fromLocalFile(self.sound_file)
+            log.debug(f"Setting media source URL: {url.toLocalFile()}")
             self.player.setSource(url)
+            
+            # Check media info
+            if hasattr(self.player, 'mediaStatus'):
+                log.debug(f"Media status: {self.player.mediaStatus()}")
             
             # Connect signals
             self.player.playbackStateChanged.connect(self._on_playback_state_changed)
@@ -251,6 +256,8 @@ class CrossPlatformAudioPlayer(QObject):
             
             # Check playback state after a short delay
             QTimer.singleShot(100, self._log_playback_status)
+            QTimer.singleShot(500, self._log_playback_status)  # Check again after 500ms
+            QTimer.singleShot(1000, self._log_playback_status)  # Check again after 1s
             
             # Get duration for non-looping playback
             if not self.loop:
@@ -434,15 +441,36 @@ class CrossPlatformAudioPlayer(QObject):
     
     def _log_playback_status(self):
         """Log current playback status for debugging"""
-        if self.player and hasattr(self.player, 'playbackState'):
+        if self.player:
             from PySide6.QtMultimedia import QMediaPlayer
-            state = self.player.playbackState()
-            state_names = {
-                QMediaPlayer.PlaybackState.StoppedState: "Stopped",
-                QMediaPlayer.PlaybackState.PlayingState: "Playing", 
-                QMediaPlayer.PlaybackState.PausedState: "Paused"
-            }
-            log.debug(f"QMediaPlayer state: {state_names.get(state, 'Unknown')}")
+            if hasattr(self.player, 'playbackState'):
+                state = self.player.playbackState()
+                state_names = {
+                    QMediaPlayer.PlaybackState.StoppedState: "Stopped",
+                    QMediaPlayer.PlaybackState.PlayingState: "Playing", 
+                    QMediaPlayer.PlaybackState.PausedState: "Paused"
+                }
+            log.debug(f"QMediaPlayer playback state: {state_names.get(state, 'Unknown')}")
+            
+            if hasattr(self.player, 'mediaStatus'):
+                status = self.player.mediaStatus()
+                status_names = {
+                    QMediaPlayer.MediaStatus.NoMedia: "NoMedia",
+                    QMediaPlayer.MediaStatus.LoadingMedia: "LoadingMedia", 
+                    QMediaPlayer.MediaStatus.LoadedMedia: "LoadedMedia",
+                    QMediaPlayer.MediaStatus.BufferingMedia: "BufferingMedia",
+                    QMediaPlayer.MediaStatus.BufferedMedia: "BufferedMedia",
+                    QMediaPlayer.MediaStatus.EndOfMedia: "EndOfMedia",
+                    QMediaPlayer.MediaStatus.InvalidMedia: "InvalidMedia"
+                }
+            log.debug(f"QMediaPlayer media status: {status_names.get(status, 'Unknown') if status else 'None'}")
+            
+            if hasattr(self.player, 'duration') and self.player.duration() > 0:
+                log.debug(f"QMediaPlayer duration: {self.player.duration()}ms")
+            
+            if hasattr(self.player, 'position'):
+                log.debug(f"QMediaPlayer position: {self.player.position()}ms")
+            
         if hasattr(self, 'current_backend'):
             log.debug(f"Current backend: {self.current_backend}")
 
