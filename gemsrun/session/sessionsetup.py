@@ -55,7 +55,8 @@ def setup_data_logging(user: str, debug: bool) -> Path:
     if debug:
         # In debug mode, keep console output AND add file output
         log.add(
-            Path(data_path, log_file),
+            #Path(data_path, log_file),
+            log_file,
             format=log_format,
             colorize=False,
             level="DEBUG",
