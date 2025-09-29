@@ -14,9 +14,20 @@ from PySide6.QtMultimedia import QSoundEffect, QAudioDevice, QMediaDevices
 
 from gemsrun import log
 
+# Try to import playsound3 for cross-platform audio playback
+try:
+    import playsound3 as playsound
+    PLAYSOUND_PLAY_ASYNC = True
+    log.debug("playsound3 library available")
+except ImportError:
+    playsound = None
+    PLAYSOUND_PLAY_ASYNC = False
+    log.debug("playsound3 library not available - pip install playsound3")
+
 
 class AudioBackend:
     """Enum-like class for audio backend types"""
+    PLAYSOUND3 = "playsound3"
     QMEDIAPLAYER = "qmediaplayer"
     QSOUNDEFFECT = "qsoundeffect"
     SYSTEM_COMMAND = "system_command"
@@ -50,6 +61,11 @@ class CrossPlatformAudioPlayer(QObject):
     def _detect_available_backends(self) -> list:
         """Detect which audio backends are available on this system"""
         backends = []
+        
+        # Test playsound3 availability
+        if PLAYSOUND_PLAY_ASYNC and playsound:
+            backends.append(AudioBackend.PLAYSOUND3)
+            log.debug("playsound3 backend available")
         
         # Test QMediaPlayer availability
         try:
@@ -150,8 +166,10 @@ class CrossPlatformAudioPlayer(QObject):
         is_wav = suffix in [".wav", ".wave"]
         is_short_effect_candidate = is_wav  # QSoundEffect is reliable for WAV only
 
-        # Always prioritize system commands for reliability across platforms
+        # Prioritize playsound3 for maximum reliability across platforms
         preferred_order = []
+        if AudioBackend.PLAYSOUND3 in self.backends:
+            preferred_order.append(AudioBackend.PLAYSOUND3)
         if AudioBackend.SYSTEM_COMMAND in self.backends:
             preferred_order.append(AudioBackend.SYSTEM_COMMAND)
         if is_short_effect_candidate and AudioBackend.QSOUNDEFFECT in self.backends:
@@ -169,7 +187,9 @@ class CrossPlatformAudioPlayer(QObject):
         log.info(f"Selected audio backend: {backend} for file {self.sound_file}")
         
         try:
-            if backend == AudioBackend.QMEDIAPLAYER:
+            if backend == AudioBackend.PLAYSOUND3:
+                return self._play_with_playsound3()
+            elif backend == AudioBackend.QMEDIAPLAYER:
                 return self._play_with_qmediaplayer()
             elif backend == AudioBackend.QSOUNDEFFECT:
                 return self._play_with_qsoundeffect()
@@ -193,6 +213,50 @@ class CrossPlatformAudioPlayer(QObject):
                 return False
         
         return True
+    
+    def _play_with_playsound3(self) -> bool:
+        """Play audio using playsound3 library"""
+        try:
+            if not playsound:
+                raise RuntimeError("playsound3 not available")
+            
+            log.info(f"playsound3: Playing {self.sound_file}, volume={self.volume}")
+            
+            # playsound3 supports blocking/non-blocking and returns a player object
+            # Use play_async to get a player object we can potentially stop
+            self.process = playsound.play_async(
+                self.sound_file, 
+                block=False,  # Non-blocking
+                volume=self.volume  # Volume control if supported
+            )
+            
+            if self.process is None:
+                log.error("playsound3 failed to start playback")
+                raise RuntimeError("playsound3 playback failed")
+            
+            self.is_playing_flag = True
+            
+            # Monitor in a separate thread if we have a player process
+            if hasattr(self.process, 'is_alive'):
+                monitor_thread = threading.Thread(target=self._monitor_playsound)
+                monitor_thread.daemon = True
+                monitor_thread.start()
+            
+            log.debug("Playing audio with playsound3")
+            return True
+            
+        except Exception as e:
+            log.error(f"playsound3 playback failed: {e}")
+            raise
+
+    def _monitor_playsound(self):
+        """Monitor playsound3 process"""
+        if self.process and hasattr(self.process, 'is_alive'):
+            while self.process.is_alive():
+                time.sleep(0.1)
+            self.is_playing_flag = False
+            if not self.loop:
+                self.playback_finished.emit()
     
     def _play_with_qmediaplayer(self) -> bool:
         """Play audio using QMediaPlayer"""
@@ -381,10 +445,20 @@ class CrossPlatformAudioPlayer(QObject):
         
         if self.process:
             try:
-                self.process.terminate()
-                self.process.wait(timeout=2)
+                # Handle playsound3 player objects differently than subprocess
+                if hasattr(self.process, 'stop'):
+                    # playsound3 player object
+                    self.process.stop()
+                elif hasattr(self.process, 'terminate'):
+                    # subprocess object
+                    self.process.terminate()
+                    self.process.wait(timeout=2)
+                elif hasattr(self.process, 'kill'):
+                    # fallback kill
+                    self.process.kill()
             except subprocess.TimeoutExpired:
-                self.process.kill()
+                if hasattr(self.process, 'kill'):
+                    self.process.kill()
             except Exception:
                 pass
             self.process = None
