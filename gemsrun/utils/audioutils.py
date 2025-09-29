@@ -53,14 +53,21 @@ class CrossPlatformAudioPlayer(QObject):
         
         # Test QMediaPlayer availability
         try:
-            from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+            from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
             # Try to create instances to test availability
             test_player = QMediaPlayer()
             test_output = QAudioOutput()
+            
+            # Check if we have audio devices available
+            audio_devices = QMediaDevices.audioOutputs()
+            log.debug(f"Audio devices available: {len(audio_devices)}")
+            
             # We cannot rely on hasAudio() here because no source is set yet; just ensure construction works
-            if test_output is not None and test_player is not None:
+            if test_output is not None and test_player is not None and len(audio_devices) > 0:
                 backends.append(AudioBackend.QMEDIAPLAYER)
                 log.debug("QMediaPlayer backend available")
+            else:
+                log.debug(f"QMediaPlayer backend not available - output:{test_output is not None}, player:{test_player is not None}, devices:{len(audio_devices)}")
         except Exception as e:
             log.debug(f"QMediaPlayer backend not available: {e}")
         
@@ -80,6 +87,14 @@ class CrossPlatformAudioPlayer(QObject):
             backends.append(AudioBackend.SYSTEM_COMMAND)
             log.debug("System audio command backend available")
         
+        # On macOS, prioritize system commands if Qt multimedia is having issues
+        if platform.system() == "Darwin" and backends:
+            log.debug(f"macOS detected, backends before reorder: {backends}")
+            if AudioBackend.SYSTEM_COMMAND in backends:
+                # Move system command to front for macOS
+                backends = [AudioBackend.SYSTEM_COMMAND] + [b for b in backends if b != AudioBackend.SYSTEM_COMMAND]
+            log.debug(f"macOS detected, backends after reorder: {backends}")
+        
         return backends
     
     def _test_system_audio_commands(self) -> bool:
@@ -87,11 +102,19 @@ class CrossPlatformAudioPlayer(QObject):
         commands = self._get_system_audio_commands()
         for cmd in commands:
             try:
-                result = subprocess.run([cmd, "--version"], 
-                                      capture_output=True, 
-                                      timeout=2)
-                if result.returncode == 0:
+                # afplay doesn't have a --version flag, test differently
+                if cmd == "afplay":
+                    result = subprocess.run([cmd], 
+                                          capture_output=True, 
+                                          timeout=2)
+                    # afplay will error without a file argument, but that means it exists
                     return True
+                else:
+                    result = subprocess.run([cmd, "--version"], 
+                                          capture_output=True, 
+                                          timeout=2)
+                    if result.returncode == 0:
+                        return True
             except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
                 continue
         return False
