@@ -137,6 +137,8 @@ class CrossPlatformAudioPlayer(QObject):
         backend = preferred_order[0]
         self.current_backend = backend
         
+        log.info(f"Selected audio backend: {backend} for file {self.sound_file}")
+        
         try:
             if backend == AudioBackend.QMEDIAPLAYER:
                 return self._play_with_qmediaplayer()
@@ -171,6 +173,12 @@ class CrossPlatformAudioPlayer(QObject):
             
             self.player = QMediaPlayer()
             audio_output = QAudioOutput()
+            
+            # Check if audio output is available
+            if not audio_output.isAvailable():
+                log.warning("QAudioOutput not available")
+                raise RuntimeError("QAudioOutput not available")
+            
             # QAudioOutput volume range is 0.0 - 1.0 in Qt6
             audio_output.setVolume(float(self.volume))
             self.player.setAudioOutput(audio_output)
@@ -182,8 +190,16 @@ class CrossPlatformAudioPlayer(QObject):
             self.player.playbackStateChanged.connect(self._on_playback_state_changed)
             self.player.errorOccurred.connect(self._on_error_occurred)
             
+            log.info(f"QMediaPlayer: Playing {self.sound_file}, volume={self.volume}")
+            log.debug(f"Audio output available: {audio_output.isAvailable()}")
+            log.debug(f"Audio output volume: {audio_output.volume()}")
+            log.debug(f"Media player has audio: {self.player.hasAudio()}")
+            
             self.player.play()
             self.is_playing_flag = True
+            
+            # Check playback state after a short delay
+            QTimer.singleShot(100, self._log_playback_status)
             
             # Get duration for non-looping playback
             if not self.loop:
@@ -360,6 +376,20 @@ class CrossPlatformAudioPlayer(QObject):
                     if self.timer:
                         self.timer.stop()
     
+    def _log_playback_status(self):
+        """Log current playback status for debugging"""
+        if self.player and hasattr(self.player, 'playbackState'):
+            from PySide6.QtMultimedia import QMediaPlayer
+            state = self.player.playbackState()
+            state_names = {
+                QMediaPlayer.PlaybackState.StoppedState: "Stopped",
+                QMediaPlayer.PlaybackState.PlayingState: "Playing", 
+                QMediaPlayer.PlaybackState.PausedState: "Paused"
+            }
+            log.debug(f"QMediaPlayer state: {state_names.get(state, 'Unknown')}")
+        if hasattr(self, 'current_backend'):
+            log.debug(f"Current backend: {self.current_backend}")
+
     def _monitor_process(self):
         """Monitor system command process"""
         if self.process:
