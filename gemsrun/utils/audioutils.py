@@ -250,7 +250,7 @@ class CrossPlatformAudioPlayer(QObject):
     def _monitor_playsound(self):
         """Monitor playsound3 process"""
         if self.process and hasattr(self.process, 'is_alive'):
-            while self.process.is_alive():
+            while self.process is not None and self.process.is_alive():
                 time.sleep(0.1)
             self.is_playing_flag = False
             if not self.loop:
