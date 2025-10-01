@@ -564,6 +564,8 @@ class NavImageObject(QLabel):
             log.warning(f"Unable to locate or open nav image file {str(img_file)}.")
             self.setFixedSize(size_codex[self.nav_type])
             style_sheet += "QLabel::hover{border : 4px yellow; border-style : dotted;}"
+        except Exception as e:
+            log.error(f'Error Creating NavImageObject: {e}')
 
         self.setStyleSheet(style_sheet)
 
