@@ -1,6 +1,4 @@
 import optparse
-import os
-import platform
 from pathlib import Path
 from typing import Optional
 

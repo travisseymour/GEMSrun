@@ -199,6 +199,7 @@ class ViewPanel(QWidget):
         self.nav_image: Optional[QImage] = None
         self.pocket_bitmap: Optional[QImage] = None
         self.view_is_fullscreen = self.options.DisplayType.lower() == "fullscreen"
+        log.debug(f'{self.view_is_fullscreen=}')
 
         self.sleep_event_loop = QEventLoop()  # useful for synchronous GEMS actions -- blocks ui until done.
 

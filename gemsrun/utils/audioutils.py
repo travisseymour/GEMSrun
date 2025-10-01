@@ -8,8 +8,9 @@ import platform
 import threading
 import time
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from PySide6.QtCore import QObject, QTimer, Signal
+# the line `from PySide6.QtMultimedia import QSoundEffect, QAudioDevice, QMediaDevices` needs to stay here!!
 from PySide6.QtMultimedia import QSoundEffect, QAudioDevice, QMediaDevices
 
 from gemsrun import log
