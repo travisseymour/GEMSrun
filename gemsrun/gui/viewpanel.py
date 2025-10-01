@@ -20,14 +20,9 @@ import string
 import webbrowser
 from typing import Optional, Dict, List, Union
 
-
-from PySide6.QtMultimedia import QMediaPlayer
-from PySide6.QtMultimedia import QAudioOutput
-
 from PySide6.QtWidgets import QWidget, QLabel, QMessageBox
-from PySide6.QtCore import Qt, QPoint, QRect, QTimer, QUrl, QEventLoop
+from PySide6.QtCore import Qt, QPoint, QRect, QTimer, QEventLoop
 
-# from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtGui import (
     QImage,
     QPixmap,
@@ -199,7 +194,6 @@ class ViewPanel(QWidget):
         self.nav_image: Optional[QImage] = None
         self.pocket_bitmap: Optional[QImage] = None
         self.view_is_fullscreen = self.options.DisplayType.lower() == "fullscreen"
-        print(f'{self.view_is_fullscreen=}')
 
         self.sleep_event_loop = QEventLoop()  # useful for synchronous GEMS actions -- blocks ui until done.
 
