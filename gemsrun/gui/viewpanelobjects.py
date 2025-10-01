@@ -473,7 +473,7 @@ class ViewPocketObject(QLabel):
                 log.info(
                     dict(
                         Kind="Mouse",
-                        Type="PocketOjbectLeftClick",
+                        Type="PocketObjectLeftClick",
                         View=self.parent().View.Name,
                         Target=self.object_info.name,
                         Result="Success",
@@ -489,7 +489,7 @@ class ViewPocketObject(QLabel):
                 log.info(
                     dict(
                         Kind="Mouse",
-                        Type="PocketOjbectRightClick",
+                        Type="PocketObjectRightClick",
                         View=self.parent().View.Name,
                         Target=self.object_info.name,
                         Result="Invalid|EmptyPocket",
@@ -501,7 +501,7 @@ class ViewPocketObject(QLabel):
                 log.info(
                     dict(
                         Kind="Mouse",
-                        Type="PocketOjbectRightClick",
+                        Type="PocketObjectRightClick",
                         View=self.parent().View.Name,
                         Target=self.object_info.name,
                         Result="Success",
@@ -549,6 +549,7 @@ class NavImageObject(QLabel):
         style_sheet = "QLabel{background-color: rgba(0,0,0,0%)} "  # transparent background
 
         img_file = Path(nav_image_folder, file_codex[nav_type]).resolve()
+        log.warning(f'{img_file=}')
         try:
             image = QImage(str(img_file))
             self.setFixedSize(image.width(), image.height())
