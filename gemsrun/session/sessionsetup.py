@@ -52,6 +52,8 @@ def setup_data_logging(user: str, debug: bool) -> Path:
     dt = datetime.strftime(datetime.now(), "%m%d%y_%H%M%S")
     log_file = Path(data_path, f"{app_short_name}_v{__version__.replace('.', '')}_{user}_{dt}.txt")
 
+    log.remove()
+
     if debug:
         # In debug mode, keep console output AND add file output
         print(f'{log_file=}')
@@ -60,14 +62,17 @@ def setup_data_logging(user: str, debug: bool) -> Path:
             log_file,
             format=log_format,
             colorize=False,
+            enqueue=True,
             level="DEBUG",
         )
         print('log added')
         # Console output with colors for debug mode
         print('log_sink=sys.stderr')
         log.add(
-            sys.stdout,
+            sys.stderr,
             format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{module}</cyan>:<cyan>{line}</cyan> | {message}",
+            colorize=True,
+            enqueue=True,
             level="DEBUG",
         )
         print('log added')
@@ -79,6 +84,7 @@ def setup_data_logging(user: str, debug: bool) -> Path:
             log_file,
             format=log_format,
             colorize=False,
+            enqueue=True,
             level="INFO",
         )
 
