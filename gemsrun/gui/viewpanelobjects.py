@@ -567,6 +567,11 @@ class NavImageObject(QLabel):
         except Exception as e:
             log.warning(f'Error Creating NavImageObject: {e}')
 
+        # ensure the stylesheet background is actually painted on Windows
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setMouseTracking(True)  # makes :hover more responsive on some styles
+        style_sheet += "QLabel { background-repeat: no-repeat; } "
+
         self.setStyleSheet(style_sheet)
 
     def mousePressEvent(self, ev: QMouseEvent) -> None:
