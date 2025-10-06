@@ -63,14 +63,16 @@ def setup_data_logging(user: str, debug: bool) -> Path:
             level="DEBUG",
         )
         # Console output with colors for debug mode
-        if debug and sys.stderr is not None:
-            log.add(
-                sys.stderr,
-                format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{module}</cyan>:<cyan>{line}</cyan> | {message}",
-                colorize=True,
-                enqueue=True,
-                level="DEBUG",
-            )
+        if debug:
+            out = sys.stderr if sys.stderr is not None else sys.stdout
+            if out is not None:
+                log.add(
+                    sys.stderr,
+                    format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{module}</cyan>:<cyan>{line}</cyan> | {message}",
+                    colorize=True,
+                    enqueue=True,
+                    level="DEBUG",
+                )
 
     else:
         log.remove()  # remove default logger
