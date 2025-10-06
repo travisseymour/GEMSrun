@@ -52,9 +52,14 @@ def setup_data_logging(user: str, debug: bool) -> Path:
     dt = datetime.strftime(datetime.now(), "%m%d%y_%H%M%S")
     log_file = Path(data_path, f"{app_short_name}_v{__version__.replace('.', '')}_{user}_{dt}.txt")
 
-    log.remove()
+    QMessageBox.information(
+        None,
+        "DEBUG",
+        f"{str(data_path)=}, \n{data_path.is_dir()=}, \n{str(log_file)=}, \n{log_file.is_file()}",
+        QMessageBox.StandardButton.Ok,
+    )
 
-    log.debug('>>>>>>>>>>>>>>>>>>>> BEFORE')
+    log.remove()
 
     if debug:
         # In debug mode, keep console output AND add file output
@@ -87,8 +92,6 @@ def setup_data_logging(user: str, debug: bool) -> Path:
         )
 
     log.debug(f'\nSaving data to "{log_file}".\n')
-
-    log.debug(f'>>>>>>>>>>>>>>>>>>>> AFTER: {str(log_file)}')
 
     return Path(data_path)
 
