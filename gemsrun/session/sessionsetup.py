@@ -52,6 +52,7 @@ def setup_data_logging(user: str, debug: bool) -> Path:
     dt = datetime.strftime(datetime.now(), "%m%d%y_%H%M%S")
     log_file = Path(data_path, f"{app_short_name}_v{__version__.replace('.', '')}_{user}_{dt}.txt")
 
+    # NOTE: When uncommented, data_path is the correct Path, and data_path.is_dir() returns True!
     # QMessageBox.information(
     #     None,
     #     "DEBUG",
@@ -72,13 +73,14 @@ def setup_data_logging(user: str, debug: bool) -> Path:
             level="DEBUG",
         )
         # Console output with colors for debug mode
-        log.add(
-            sys.stderr,
-            format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{module}</cyan>:<cyan>{line}</cyan> | {message}",
-            colorize=True,
-            enqueue=True,
-            level="DEBUG",
-        )
+        if debug and sys.stderr is not None:
+            log.add(
+                sys.stderr,
+                format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{module}</cyan>:<cyan>{line}</cyan> | {message}",
+                colorize=True,
+                enqueue=True,
+                level="DEBUG",
+            )
 
     else:
         log.remove()  # remove default logger
