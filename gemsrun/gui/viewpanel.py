@@ -562,7 +562,7 @@ class ViewPanel(QWidget):
 
     def make_action_timer(self, condition: str, action: str, when_secs: float):
         log.debug(f'SETTING A TIMER TO "{action}" in {when_secs * 1000} ms if condition "{condition}" is met.')
-        timer = QTimer.singleShot(
+        QTimer.singleShot(
             int(when_secs * 1000),
             self,
             partial(self.do_action, condition=condition, action=action),

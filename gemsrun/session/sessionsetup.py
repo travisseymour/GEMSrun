@@ -47,26 +47,16 @@ def setup_data_logging(user: str, debug: bool) -> Path:
 
     # setup logfile sink
     data_path = Path.home() / "Documents" / "GEMS" / "Data"  # TODO: Add Option To Move This
-    data_path.parent.mkdir(exist_ok=True)
-    data_path.mkdir(exist_ok=True)
+    data_path.mkdir(parents=True, exist_ok=True)
     dt = datetime.strftime(datetime.now(), "%m%d%y_%H%M%S")
     log_file = Path(data_path, f"{app_short_name}_v{__version__.replace('.', '')}_{user}_{dt}.txt")
 
-    # NOTE: When uncommented, data_path is the correct Path, and data_path.is_dir() returns True!
-    # QMessageBox.information(
-    #     None,
-    #     "DEBUG",
-    #     f"{str(data_path)=}, \n{data_path.is_dir()=}, \n{str(log_file)=}, \n{log_file.is_file()}",
-    #     QMessageBox.StandardButton.Ok,
-    # )
-
-    # log.remove()
+    log.remove()
 
     if debug:
         # In debug mode, keep console output AND add file output
         log.add(
-            #Path(data_path, log_file),
-            log_file,
+            str(log_file),
             format=log_format,
             colorize=False,
             enqueue=True,
@@ -85,8 +75,7 @@ def setup_data_logging(user: str, debug: bool) -> Path:
     else:
         log.remove()  # remove default logger
         log.add(
-            #Path(data_path, log_file),
-            log_file,
+            str(log_file),
             format=log_format,
             colorize=False,
             enqueue=True,
