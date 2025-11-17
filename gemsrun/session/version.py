@@ -1,5 +1,5 @@
 """
-GEMSedit
+GEMSrun
 Copyright (C) 2025 Travis L. Seymour, PhD
 
 This program is free software: you can redistribute it and/or modify
@@ -41,3 +41,5 @@ try:
 except:
     # Fallback: Read version from pyproject.toml during development
     __version__ = get_version_from_pyproject()
+
+print(f"Running GEMSRun version {__version__}")
