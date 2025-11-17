@@ -16,16 +16,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import re
+from textwrap import dedent
+
+from munch import Munch
 from PySide6 import QtWidgets
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QFont
 
-from textwrap import dedent
-import re
-
 from gemsrun import app_short_name
-from munch import Munch
-
 from gemsrun.session.version import __version__
 
 # https://www.w3schools.com/html/tryit.asp?filename=tryhtml_table
@@ -33,7 +32,7 @@ from gemsrun.session.version import __version__
 
 class InfoDialog(QtWidgets.QDialog):
     def __init__(self, parent, db: Munch):
-        super(InfoDialog, self).__init__(parent)
+        super().__init__(parent)
         self.tab_widget = None
         self.variable_text = None
         self.view_text = None
@@ -148,7 +147,7 @@ class InfoDialog(QtWidgets.QDialog):
             padding: 5px; /* Apply cell padding */
         }
         </style>
-        
+
         <h3>View Info</h3>
         <table style="width:100%">
         <tr><th>Property</th><th>Value</th></tr>
@@ -192,7 +191,7 @@ class InfoDialog(QtWidgets.QDialog):
         try:
             buffer = self.parent().view_window.key_buffer
             assert buffer
-        except:
+        except Exception:
             buffer = "<i>None</i>"
 
         info += dedent(
@@ -243,7 +242,7 @@ class InfoDialog(QtWidgets.QDialog):
     def func_name(self, call: str) -> str:
         try:
             return re.search(r"^[^\(]+", call).group(0)
-        except:
+        except Exception:
             return "???"
 
     def update_info(self):

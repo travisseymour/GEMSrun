@@ -26,7 +26,7 @@ from typing import Any
 from PySide6.QtCore import QObject, QTimer, Signal
 
 # the line `from PySide6.QtMultimedia import QSoundEffect, QAudioDevice, QMediaDevices` needs to stay here!!
-from PySide6.QtMultimedia import QAudioDevice, QMediaDevices, QSoundEffect
+from PySide6.QtMultimedia import QAudioDevice, QMediaDevices, QSoundEffect  # noqa: F401
 
 from gemsrun import log
 

@@ -16,44 +16,49 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from pathlib import Path
-from typing import List, Union
+from __future__ import annotations
 
+import contextlib
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from munch import Munch
 from PySide6.QtCore import (
-    QObject,
     QEvent,
-    QSize,
-    QRect,
-    Qt,
     QMimeData,
-    Slot,
+    QObject,
     QPoint,
+    QRect,
+    QSize,
+    Qt,
     QTimer,
     QUrl,
     Signal,
+    Slot,
 )
 from PySide6.QtGui import (
-    QPixmap,
-    QPainter,
+    QCloseEvent,
     QColor,
-    QMouseEvent,
+    QCursor,
     QDrag,
     QDragEnterEvent,
     QDropEvent,
     QImage,
-    QCloseEvent,
+    QMouseEvent,
     QMovie,
-    QCursor,
+    QPainter,
+    QPixmap,
 )
-from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtWidgets import QLabel
 
-
-from munch import Munch
+from gemsrun import log
 from gemsrun.gui.viewpanelutils import pixmap_to_pointer
 from gemsrun.utils import gemsutils as gu
-from gemsrun import log
+
+if TYPE_CHECKING:  # Avoid circular import at runtime
+    from .viewpanel import ViewPanel
 
 
 class HoverTracker(QObject):
@@ -88,8 +93,8 @@ class ViewImageObject(QLabel):
     Assumes parent is ViewPanel instance
     """
 
-    def __init__(self, parent, obj_id: int, pixmap: QPixmap, scale: List[float]):
-        super(ViewImageObject, self).__init__(parent=parent)
+    def __init__(self, parent: ViewPanel, obj_id: int, pixmap: QPixmap, scale: list[float]):
+        super().__init__(parent=parent)
         self.db: Munch = self.parent().db
         self.object: Munch = self.db.Views[str(self.parent().view_id)].Objects[str(obj_id)]
         self.show_name: bool = False  # would ALWAYS show name. For debug?
@@ -549,7 +554,7 @@ class NavImageObject(QLabel):
         style_sheet = "QLabel{background-color: rgba(0,0,0,0%)} "  # transparent background
 
         img_file = Path(nav_image_folder, file_codex[nav_type]).resolve()
-        log.warning(f'{img_file=}; {Path(img_file).is_file()=}')
+        log.warning(f"{img_file=}; {Path(img_file).is_file()=}")
         try:
             image = QImage(str(img_file))
             self.setFixedSize(image.width(), image.height())
@@ -565,7 +570,7 @@ class NavImageObject(QLabel):
             self.setFixedSize(size_codex[self.nav_type])
             style_sheet += "QLabel::hover{border : 4px yellow; border-style : dotted;}"
         except Exception as e:
-            log.warning(f'Error Creating NavImageObject: {e}')
+            log.warning(f"Error Creating NavImageObject: {e}")
 
         # ensure the stylesheet background is actually painted on Windows
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -603,7 +608,7 @@ class TextBoxObject(QLabel):
 
     def __init__(
         self,
-        parent,
+        parent: "ViewPanel",
         message: str,
         left: int = 0,
         top: int = 0,
@@ -614,11 +619,11 @@ class TextBoxObject(QLabel):
         bold: bool = False,
     ):
         try:
-            super(TextBoxObject, self).__init__(parent=parent)
+            super().__init__(parent=parent)
         except RuntimeError:
             # Note: Here because I'm sometimes getting this:
             #       RuntimeError: wrapped C/C++ object of type ViewPanel has been deleted
-            super(TextBoxObject, self).__init__()
+            super().__init__()
         style_sheet = "QLabel{ "
         style_sheet += f"color: rgba{tuple(fg_color)}; "
         style_sheet += f"background-color: rgba{tuple(bg_color)}; "
@@ -638,16 +643,12 @@ class TextBoxObject(QLabel):
         self.move(left, top)
 
         if duration:
-            QTimer.singleShot(
-                int(duration * 1000), 
-                self, 
-                self.hide_me
-            )
+            QTimer.singleShot(int(duration * 1000), self, self.hide_me)
 
     def hide_me(self):
         try:
             self.hide()
-        except:
+        except Exception:
             ...
 
 
@@ -659,20 +660,18 @@ class ExternalImageObject(QLabel):
 
     def __init__(
         self,
-        parent,
+        parent: ViewPanel,
         image_path: Path,
         left: int = 0,
         top: int = 0,
         duration: float = 0.0,
         click_through: bool = False,
-        scale: Union[tuple, list] = (1.0, 1.0),
+        scale: tuple | list = (1.0, 1.0),
     ):
-        super(ExternalImageObject, self).__init__(parent=parent)
+        super().__init__(parent=parent)
         self.file_name = Path(image_path).name
 
-        style_sheet = "QLabel{ "
-        # style_sheet += "background-image: url(" + str(image_path.resolve()) + ");"
-        style_sheet += "background-color: rgba(0,0,0,0%); "
+        style_sheet = "QLabel{ " + "background-color: rgba(0,0,0,0%); "
         style_sheet += "position: absolute; "
         style_sheet += " }"
 
@@ -697,14 +696,10 @@ class ExternalImageObject(QLabel):
         self.move(left, top)
 
         if duration:
-            QTimer.singleShot(
-                int(duration * 1000), 
-                self, 
-                self.hide
-            )
+            QTimer.singleShot(int(duration * 1000), self, self.hide)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        super(ExternalImageObject, self).mousePressEvent(event)
+        super().mousePressEvent(event)
         if event.buttons():
             log.debug(f"external image mouse press event received: {event.buttons()}")
 
@@ -737,7 +732,7 @@ class VideoObject(QVideoWidget):
         volume: float = 1.0,
         loop: bool = False,
     ):
-        super(VideoObject, self).__init__(parent=parent)
+        super().__init__(parent=parent)
         self.video_path: Path = video_path
         self.player = None
         self.audio_output = None
@@ -749,23 +744,18 @@ class VideoObject(QVideoWidget):
                 "is not currently implemented"
             )
 
-        style_sheet = "QVideoWidget{ "
-        style_sheet += "background-color: rgba(0,0,0,0%); "
-        # style_sheet += "position: absolute; "
-        style_sheet += " }"
+        style_sheet = "QVideoWidget{ background-color: rgba(0,0,0,0%); }"
         self.setStyleSheet(style_sheet)
 
         # Try to create QMediaPlayer with error handling
         try:
-            from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
-            
             url = QUrl.fromLocalFile(str(video_path.absolute()))
-            
+
             self.player = QMediaPlayer(self.parent())
             self.player.setSource(url)
             self.player.setVideoOutput(self)
             self.player.setPosition(start)
-            
+
             # Test audio output availability
             self.audio_output = QAudioOutput()
             if self.audio_output.isAvailable():
@@ -775,7 +765,7 @@ class VideoObject(QVideoWidget):
             else:
                 log.warning("Audio output not available for video playback")
                 self.fallback_mode = True
-                
+
         except Exception as e:
             log.error(f"Failed to initialize video player: {e}")
             log.info("Video playback will be attempted with limited functionality")
@@ -790,7 +780,7 @@ class VideoObject(QVideoWidget):
         self.show()
         self.activateWindow()
         self.raise_()
-        
+
         # Only attempt to play if we have a working player
         if self.player and not self.fallback_mode:
             self.play()
@@ -866,20 +856,17 @@ class AnimationObject(QLabel):
         volume: float = 1.0,
         loop: bool = False,
     ):
-        super(AnimationObject, self).__init__(parent=parent)
+        super().__init__(parent=parent)
         self.video_path: Path = video_path
 
-        style_sheet = "QLabel{ "
-        style_sheet += "background-color: rgba(0,0,0,0%); "
-        # style_sheet += "position: absolute; "
-        style_sheet += " }"
+        style_sheet = "QLabel{ background-color: rgba(0,0,0,0%); }"
         self.setStyleSheet(style_sheet)
 
         self.setScaledContents(True)
         self.movie = QMovie(str(video_path.absolute()), parent=self)
         self.setMovie(self.movie)
 
-        if size:
+        if isinstance(size, QSize):
             self.setFixedSize(size)
         else:
             self.setFixedSize(self.parent().size())
@@ -891,22 +878,16 @@ class AnimationObject(QLabel):
         self.raise_()
 
     def play(self):
-        try:
+        with contextlib.suppress(Exception):
             self.movie.start()
-        except:
-            pass
 
     def pause(self):
-        try:
+        with contextlib.suppress(Exception):
             self.movie.stop()
-        except:
-            pass
 
     def stop(self):
-        try:
+        with contextlib.suppress(Exception):
             self.movie.stop()
-        except:
-            pass
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.stop()

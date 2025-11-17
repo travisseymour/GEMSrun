@@ -16,14 +16,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from PySide6.QtCore import QSettings
+from functools import partial
+from pathlib import Path
 
+from munch import Munch
+from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
 
 from gemsrun.gui.paramdialog import Ui_paramDialog
-from munch import Munch
-from pathlib import Path
-from functools import partial
 
 ERROR = "background : red;"
 NORMAL = ""
@@ -35,7 +35,7 @@ NORMAL = ""
 
 class ParamDialog(QDialog):
     def __init__(self, params: Munch):
-        super(ParamDialog, self).__init__()
+        super().__init__()
         self.ok = False
         self.ui = Ui_paramDialog()
         self.ui.setupUi(self)

@@ -16,31 +16,30 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import Optional, Dict
+import contextlib
+import timeit
 
-from PySide6.QtWidgets import QMainWindow, QApplication
-from PySide6.QtCore import QSize, QRect, Qt
+from munch import Munch
+from PySide6.QtCore import QRect, QSize, Qt
 from PySide6.QtGui import QCloseEvent, QKeyEvent
+from PySide6.QtWidgets import QApplication, QMainWindow
 
 import gemsrun
-from gemsrun.gui.viewpanel import ViewPanel
-from munch import Munch
-from gemsrun.gui.infowindow import InfoDialog
-import timeit
 from gemsrun import log
-
+from gemsrun.gui.infowindow import InfoDialog
+from gemsrun.gui.viewpanel import ViewPanel
 from gemsrun.gui.viewpanelobjects import ViewPocketObject
 
 
 class MainWin(QMainWindow):
     def __init__(self, db: Munch):
-        super(MainWin, self).__init__(None)
+        super().__init__(None)
         self.db = db
         self.options = db.Global.Options
         self.current_view_id: int = self.options.Startview
         self.next_view_id: int = -1
-        self.view_window: Optional[ViewPanel] = None
-        self.pocket_objects: Optional[Dict[int, ViewPocketObject]] = None
+        self.view_window: ViewPanel | None = None
+        self.pocket_objects: dict[int, ViewPocketObject] | None = None
         self.note_window = None
         self.setWindowTitle(db.Name)
 
@@ -95,7 +94,7 @@ class MainWin(QMainWindow):
 
     def load_next_view(self):
         log.debug(f"Loading Next View #{self.current_view_id}")
-        self.view_window = ViewPanel(parent=self, view_id=self.current_view_id)
+        self.view_window: ViewPanel = ViewPanel(parent=self, view_id=self.current_view_id)
         # self.setCentralWidget(self.view_window)
 
     def shutdown_view(self):
@@ -120,11 +119,8 @@ class MainWin(QMainWindow):
             self.note_window.notes.SetLabel(text)
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self.info_window.close()
-        except:
-            pass
-
         event.accept()
 
     @classmethod
@@ -132,13 +128,13 @@ class MainWin(QMainWindow):
         """
         Helper to return string version of current keyboard modifier buttons being pressed
         """
-        QModifiers = QApplication.keyboardModifiers()
+        q_modifiers = QApplication.keyboardModifiers()
         modifiers = []
-        if (QModifiers & Qt.KeyboardModifier.ShiftModifier) == Qt.KeyboardModifier.ShiftModifier:
+        if (q_modifiers & Qt.KeyboardModifier.ShiftModifier) == Qt.KeyboardModifier.ShiftModifier:
             modifiers.append("shift")
-        if (QModifiers & Qt.KeyboardModifier.ControlModifier) == Qt.KeyboardModifier.ControlModifier:
+        if (q_modifiers & Qt.KeyboardModifier.ControlModifier) == Qt.KeyboardModifier.ControlModifier:
             modifiers.append("control")
-        if (QModifiers & Qt.KeyboardModifier.AltModifier) == Qt.KeyboardModifier.AltModifier:
+        if (q_modifiers & Qt.KeyboardModifier.AltModifier) == Qt.KeyboardModifier.AltModifier:
             modifiers.append("alt")
         return tuple(modifiers)
 

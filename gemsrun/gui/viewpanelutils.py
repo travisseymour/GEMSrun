@@ -17,10 +17,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QPixmap, QPainter, QPainterPath, QPen, QColor
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QPixmap
 
 
-def pixmap_to_pointer(pixmap: QPixmap, width: 50, height: int = 50, keep_aspect_ratio: bool = True) -> QPixmap:
+def pixmap_to_pointer(pixmap: QPixmap, width: int = 50, height: int = 50, keep_aspect_ratio: bool = True) -> QPixmap:
     """
     Takes a pixmap and creates a dragging icon with a little pointer in the upper left.
     returns a picture you can use to indicate something is being dragged.

@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from __future__ import annotations
+
 from functools import lru_cache, partial
 from itertools import chain
 from pathlib import Path
@@ -24,7 +26,7 @@ import string
 import tempfile
 import textwrap
 import timeit
-from typing import Optional, Union
+from typing import TYPE_CHECKING
 import webbrowser
 
 from gtts import gTTS
@@ -40,7 +42,7 @@ from PySide6.QtGui import (
     QImage,
     QPixmap,
 )
-from PySide6.QtWidgets import QInputDialog, QLabel, QMainWindow, QMessageBox, QWidget
+from PySide6.QtWidgets import QInputDialog, QLabel, QMessageBox, QWidget
 
 import gemsrun
 from gemsrun import log
@@ -57,6 +59,9 @@ from gemsrun.gui.viewpanelobjects import (
 from gemsrun.utils import gemsutils as gu
 from gemsrun.utils.apputils import get_resource
 from gemsrun.utils.safestrfunc import func_str_parts, get_param, is_safe_value
+
+if TYPE_CHECKING:  # Avoid circular import at runtime
+    from .mainwindow import MainWin
 
 VALID_CONDITIONS = [
     "VarValueIs",
@@ -174,8 +179,8 @@ def geom_y_adjust(value: int | float, scale_y: float) -> int:
 
 
 class ViewPanel(QWidget):
-    def __init__(self, parent: QMainWindow, view_id: int):
-        super().__init__(parent)
+    def __init__(self, parent: MainWin, view_id: int):
+        super().__init__(parent=parent)
 
         self.db: Munch = parent.db
         self.options: Munch = self.db.Global.Options
@@ -202,7 +207,7 @@ class ViewPanel(QWidget):
 
         self.hover_object = None
 
-        self.dragging = False  # True if were currently in a drag
+        self.dragging = False  # True if we're currently in a drag
         self.dragging_icon = None
         self.dragging_object = None  # Object we're currently dragging from
         self.drag_object_bitmap = None  # Hold drag object bitmap whilst dragging..avoids re-lookup

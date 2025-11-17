@@ -58,7 +58,7 @@ def get_resource(*args: str, project: str = "gemsrun") -> Path:
         # Ensure the resource path is accessible as a file
         with as_file(resource_path) as resolved_path:
             return Path(resolved_path).resolve()  # Ensure the path is absolute
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Resource not found: {'/'.join(args)}")
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Resource not found: {'/'.join(args)}") from e
     except Exception as e:
-        raise RuntimeError(f"Error accessing resource: {e}")
+        raise RuntimeError(f"Error accessing resource: {e}") from e
