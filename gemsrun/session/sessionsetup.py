@@ -27,7 +27,8 @@ import yaml
 
 from gemsrun import app_short_name, log
 from gemsrun.session.version import __version__
-from gemsrun.utils import gemsutils as gu, ttsutils
+from gemsrun.utils.gemsutils import check_connectivity, create_temporary_folder, func_name, get_image_dims
+from gemsrun.utils.ttsutils import find_tts_folder, render_tts_from_google
 
 
 def setup_data_logging(user: str, debug: bool) -> Path:
@@ -146,7 +147,7 @@ def setup_session(args: Munch) -> Munch:
 
     # Need a temp folder
     try:
-        temp_folder = gu.create_temporary_folder()
+        temp_folder = create_temporary_folder()
     except Exception as e:
         QMessageBox.critical(
             None,
@@ -175,11 +176,11 @@ def setup_session(args: Munch) -> Munch:
         "https://www.yahoo.com",
         "https://www.duckduckgo.com",
     ]
-    if gu.check_connectivity(random.choice(urls)):
-        database.Global.Options.TTSFolder = ttsutils.find_tts_folder(media_folder=media_path, temp_folder=temp_folder)
+    if check_connectivity(random.choice(urls)):
+        database.Global.Options.TTSFolder = find_tts_folder(media_folder=media_path, temp_folder=temp_folder)
         if database.Global.Options.Preloadresources:
             try:
-                database.Global.Options.TTSEnabled = ttsutils.render_tts_from_google(db=database)
+                database.Global.Options.TTSEnabled = render_tts_from_google(db=database)
             except Exception as e:
                 database.Global.Options.TTSEnabled = False
                 msg = (
@@ -229,11 +230,11 @@ def get_initial_view_size(db: Munch, media_folder: Path) -> tuple:
     start_view = db.Views[str(db.Global.Options.Startview)]
     fg_file = Path(media_folder, start_view.Foreground)
     try:
-        sz = gu.get_image_dims(fg_file)
+        sz = get_image_dims(fg_file)
     except Exception as e:
         log.warning(
             f"Problem getting dims of {str(fg_file)}. Defaulting to 1024x768 instead...may not lead to good results!",
-            context=gu.func_name(),
+            context=func_name(),
         )
         sz = (1024, 768)
     return sz

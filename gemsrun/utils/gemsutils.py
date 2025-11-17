@@ -21,16 +21,19 @@ import inspect
 import os
 from pathlib import Path
 import shutil
+import ssl
 import tempfile
 import timeit
 import traceback
-from typing import Union
 import urllib.error
 import urllib.request
 
+import certifi
 from PIL import Image
 
 from gemsrun import log
+
+_SSL_CONTEXT: ssl.SSLContext | None = None
 
 
 def create_temporary_folder() -> Path:
@@ -85,15 +88,31 @@ def func_params():
     return res
 
 
+def _get_ssl_context() -> ssl.SSLContext:
+    """
+    Build an SSL context backed by certifi's CA bundle so HTTPS checks work even
+    on platforms (e.g., python.org macOS builds) that ship without system CAs.
+    """
+    global _SSL_CONTEXT
+    if _SSL_CONTEXT is None:
+        context = ssl.create_default_context()
+        try:
+            context.load_verify_locations(certifi.where())
+        except Exception as e:  # pragma: no cover - defensive logging
+            log.debug(f"unable to load certifi CA bundle for connectivity check ({e})")
+        _SSL_CONTEXT = context
+    return _SSL_CONTEXT
+
+
 def check_connectivity(url: str):
     try:
         log.debug(f"starting to check connectivity {url}...")
         start = timeit.default_timer()
-        response = urllib.request.urlopen(url, timeout=1)
+        response = urllib.request.urlopen(url, timeout=1, context=_get_ssl_context())
         log.debug(f"web response was {response}")
         log.debug(f"finished checking connectivity after {timeit.default_timer() - start:0.4f} sec.")
         return True
-    except (TimeoutError, urllib.error.URLError) as e:  # <-- Fix here
+    except (TimeoutError, urllib.error.URLError, ssl.SSLError) as e:  # <-- Fix here
         log.warning(f"fail to check connectivity! {e}")
         return False
 
