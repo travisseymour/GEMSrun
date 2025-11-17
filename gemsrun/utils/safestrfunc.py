@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import ast
 import re
+
 import regex
 
 """
@@ -43,7 +44,7 @@ def get_param(param: str) -> str:
         return param
 
 
-def func_str_parts(cmd: str) -> tuple:
+def func_str_parts(cmd: str) -> tuple[str, list[str]]:
     """
     returns the function name and parameter list from a call within a string.
     E.g.,
@@ -51,12 +52,20 @@ def func_str_parts(cmd: str) -> tuple:
     returns
     'OpenDoor', ["key='home'", 'knob_right=True', 'combination=[3,4,2,3]']
     """
-    FUNK_PATTERN = re.compile(r"(\w+)\s*\((.*?)\)$")  # works
-    SPLIT_PATTERN = regex.compile(r'"[^"]*"(*SKIP)(*FAIL)|,\s*')  # works
-    func = FUNK_PATTERN.match(cmd.strip().replace("[", '"(LEFT) ').replace("]", ' (RIGHT)"'))  # trying to fix lists
+    func_pattern = re.compile(r"(\w+)\s*\((.*?)\)$")
+    split_pattern = regex.compile(r'"[^"]*"(*SKIP)(*FAIL)|,\s*')
+
+    prepped = cmd.strip().replace("[", '"(LEFT) ').replace("]", ' (RIGHT)"')
+    func = func_pattern.fullmatch(prepped)
+    if func is None:
+        raise ValueError(f"String is not a valid function call: {cmd!r}")
+
     fn = func.group(1)
     params = func.group(2)
-    param_list = SPLIT_PATTERN.split(params)
+    # if group(2) could ever be None, guard it:
+    # params = func.group(2) or ""
+
+    param_list = split_pattern.split(params)
     param_list = [item.replace('"(LEFT) ', "[").replace(' (RIGHT)"', "]") for item in param_list]
 
     return fn, param_list
@@ -94,7 +103,7 @@ def is_safe_value(value_str: str) -> bool:
     elif ast_value_type in (ast.List, ast.Tuple):
         _seq = re.split(r" *, *", remove_seq_boundaries(value_str))
 
-        return all((is_safe_value(item) for item in _seq))
+        return all(is_safe_value(item) for item in _seq)
     else:
         return False
 

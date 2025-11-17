@@ -1,22 +1,14 @@
-import sys
 from pathlib import Path
-from typing import Optional
 
+from loguru import logger as log  # noqa: F401
 from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QApplication
 
-if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-    pathEX = Path(sys._MEIPASS)
-else:
-    pathEX = Path(__file__).parent
+CONFIG_PATH: Path | None = None
+LOG_PATH: Path | None = None
 
-from loguru import logger as log  # noqa: F401
-
-CONFIG_PATH: Optional[Path] = None
-LOG_PATH: Optional[Path] = None
-
-APPLICATION: Optional[QApplication] = None
-SETTINGS: Optional[QSettings] = None
+APPLICATION: QApplication | None = None
+SETTINGS: QSettings | None = None
 
 app_short_name = "GEMSrun"
 app_long_name = "GEMS Runner"

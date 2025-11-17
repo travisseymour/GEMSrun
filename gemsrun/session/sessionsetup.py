@@ -16,18 +16,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from PySide6.QtWidgets import QMessageBox
-
-from gemsrun import log
+from datetime import datetime
 from pathlib import Path
 import random
 import sys
-from gemsrun.utils import gemsutils as gu, ttsutils
-from datetime import datetime
 
 from munch import Munch
-from gemsrun import app_short_name
+from PySide6.QtWidgets import QMessageBox
+import yaml
+
+from gemsrun import app_short_name, log
 from gemsrun.session.version import __version__
+from gemsrun.utils import gemsutils as gu, ttsutils
 
 
 def setup_data_logging(user: str, debug: bool) -> Path:
@@ -62,17 +62,15 @@ def setup_data_logging(user: str, debug: bool) -> Path:
             enqueue=True,
             level="DEBUG",
         )
-        # Console output with colors for debug mode
-        if debug:
-            out = sys.stderr if sys.stderr is not None else sys.stdout
-            if out is not None:
-                log.add(
-                    sys.stderr,
-                    format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{module}</cyan>:<cyan>{line}</cyan> | {message}",
-                    colorize=True,
-                    enqueue=True,
-                    level="DEBUG",
-                )
+        out = sys.stderr if sys.stderr is not None else sys.stdout
+        if out is not None:
+            log.add(
+                sys.stderr,
+                format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{module}</cyan>:<cyan>{line}</cyan> | {message}",
+                colorize=True,
+                enqueue=True,
+                level="DEBUG",
+            )
 
     else:
         log.remove()  # remove default logger
@@ -120,8 +118,11 @@ def setup_session(args: Munch) -> Munch:
 
     # Create Munch based "database" from env yaml file
     try:
-        with open(args.fname, "r") as yaml_file:
-            database = Munch.fromYAML(yaml_file)
+        with open(args.fname) as yaml_file:
+            # database = Munch.fromYAML(yaml_file)
+            # database = Munch.fromDict(yaml.safe_load(open(yaml_file)))
+            database = Munch.fromDict(yaml.safe_load(yaml_file))
+
     except Exception as e:
         QMessageBox.critical(
             None,
@@ -155,9 +156,7 @@ def setup_session(args: Munch) -> Munch:
         )
         return fail
 
-    # Check for missing media files
-    missing_media = check_media(db=database, media_folder=media_path)
-    if missing_media:
+    if missing_media := check_media(db=database, media_folder=media_path):
         msg = (
             f"The media folder ({media_path}) is missing media required for "
             f"the GEMS environment ({args.fname}):\n{missing_media}"
@@ -211,7 +210,7 @@ def setup_session(args: Munch) -> Munch:
     # - temporarily kept bc some old envs lack a volume option
     try:
         _ = database.Global.Options.Volume
-    except:
+    except Exception:
         database.Global.Options.Volume = 1.0
     # ----------------------------------------------------------------------------------------------
 
@@ -245,13 +244,13 @@ def verify_media_folder(db_path: Path) -> Path:
     make sure that there is a related _media folder next to the env db file
     """
     db_file_name = db_path.stem
-    media_folder = Path(db_path.parent, db_file_name + "_media")
+    media_folder = Path(db_path.parent, f"{db_file_name}_media")
     if not media_folder.is_dir():
         raise FileExistsError(
             f"There does not appear to be a folder called {str(media_folder)} in the same location as {str(db_path)}!"
         )
     if not list(media_folder.glob("*.*")):
-        raise EnvironmentError(f"This environment's media folder {str(media_folder)} appears to be empty!")
+        raise OSError(f"This environment's media folder {str(media_folder)} appears to be empty!")
     return media_folder
 
 

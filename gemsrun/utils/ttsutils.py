@@ -1,10 +1,13 @@
+import contextlib
 from itertools import chain
-import re
-from gemsrun.utils import gemsutils as gu
 from pathlib import Path
+import re
+
 from gtts import gTTS
-from gemsrun import log
 from munch import Munch
+
+from gemsrun import log
+from gemsrun.utils import gemsutils as gu
 
 
 def find_tts_folder(media_folder: Path, temp_folder: Path) -> Path:
@@ -15,16 +18,13 @@ def find_tts_folder(media_folder: Path, temp_folder: Path) -> Path:
     """
     tts = None
 
-    try:
+    with contextlib.suppress(Exception):
         tts = gTTS("Hello.")
-    except:
-        pass
-
     try:
         assert tts is not None
         tts.save(str(Path(media_folder, "Hello.mp3")))
         tts_folder = media_folder
-    except:
+    except Exception:
         tts_folder = Path(temp_folder)
 
     return tts_folder.resolve()
@@ -54,8 +54,7 @@ def render_tts_from_google(db: Munch) -> bool:
 
         for action in actions:
             if action.Enabled and "SayText" in action.Action and "[" not in action.Action:
-                match = say_pattern.search(string=action.Action)
-                if match:
+                if match := say_pattern.search(string=action.Action):
                     speech = match.group().strip().replace('"', "")
                     speech_hash = gu.string_hash(speech)
                     speech_filename = f"speech_{speech_hash}.mp3"

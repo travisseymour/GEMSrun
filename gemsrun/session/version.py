@@ -16,8 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import os
 from importlib.metadata import version
+import os
 import tomllib
 
 
@@ -38,7 +38,7 @@ def get_version_from_pyproject():
 try:
     # Try to get version from installed package
     __version__ = version("gemsrun")
-except:
+except Exception:
     # Fallback: Read version from pyproject.toml during development
     __version__ = get_version_from_pyproject()
 

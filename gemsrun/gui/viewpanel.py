@@ -16,51 +16,47 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from functools import lru_cache, partial
+from itertools import chain
+from pathlib import Path
+import re
 import string
+import tempfile
+import textwrap
+import timeit
+from typing import Optional, Union
 import webbrowser
-from typing import Optional, Dict, List, Union
 
-from PySide6.QtWidgets import QWidget, QLabel, QMessageBox
-from PySide6.QtCore import Qt, QPoint, QRect, QTimer, QEventLoop
-
+from gtts import gTTS
+from munch import Munch
+from PySide6.QtCore import QEventLoop, QPoint, QRect, Qt, QTimer
 from PySide6.QtGui import (
-    QImage,
-    QPixmap,
-    QCursor,
     QCloseEvent,
-    QDragLeaveEvent,
+    QCursor,
     QDragEnterEvent,
+    QDragLeaveEvent,
     QDragMoveEvent,
     QDropEvent,
+    QImage,
+    QPixmap,
 )
-from PySide6.QtWidgets import QInputDialog, QMainWindow
-
-from gemsrun import log
+from PySide6.QtWidgets import QInputDialog, QLabel, QMainWindow, QMessageBox, QWidget
 
 import gemsrun
+from gemsrun import log
 from gemsrun.gui import uiutils
-from gemsrun.utils import gemsutils as gu
-from gemsrun.utils.apputils import get_resource
-from munch import Munch
-import timeit
-import re
-from functools import partial, lru_cache
-import tempfile
-from gtts import gTTS
-from itertools import chain
-import textwrap
-from pathlib import Path
-
-from gemsrun.utils.safestrfunc import func_str_parts, get_param, is_safe_value
 from gemsrun.gui.viewpanelobjects import (
-    ViewImageObject,
+    AnimationObject,
+    ExternalImageObject,
     NavImageObject,
     TextBoxObject,
-    ExternalImageObject,
-    AnimationObject,
     VideoObject,
+    ViewImageObject,
     ViewPocketObject,
 )
+from gemsrun.utils import gemsutils as gu
+from gemsrun.utils.apputils import get_resource
+from gemsrun.utils.safestrfunc import func_str_parts, get_param, is_safe_value
 
 VALID_CONDITIONS = [
     "VarValueIs",
@@ -116,16 +112,12 @@ class SoundPlayer:
         self._volume = volume / 100.0  # Convert to 0-1 range
         self._loop = loop
         self._player = None
-        
+
         # Import the cross-platform audio player
         from gemsrun.utils.audioutils import CrossPlatformAudioPlayer
-        
+
         try:
-            self._player = CrossPlatformAudioPlayer(
-                sound_file=sound_file,
-                volume=self._volume,
-                loop=loop
-            )
+            self._player = CrossPlatformAudioPlayer(sound_file=sound_file, volume=self._volume, loop=loop)
             log.debug(f"Created cross-platform audio player for {sound_file}")
         except Exception as e:
             log.error(f"Failed to create audio player: {e}")
@@ -172,39 +164,39 @@ class SoundPlayer:
 
 
 @lru_cache
-def geom_x_adjust(value: Union[int, float], scale_x: float) -> int:
+def geom_x_adjust(value: int | float, scale_x: float) -> int:
     return int(value * scale_x)
 
 
 @lru_cache
-def geom_y_adjust(value: Union[int, float], scale_y: float) -> int:
+def geom_y_adjust(value: int | float, scale_y: float) -> int:
     return int(value * scale_y)
 
 
 class ViewPanel(QWidget):
     def __init__(self, parent: QMainWindow, view_id: int):
-        super(ViewPanel, self).__init__(parent)
+        super().__init__(parent)
 
         self.db: Munch = parent.db
         self.options: Munch = self.db.Global.Options
         self.view_id: int = view_id
-        self.View: Optional[Munch] = None
+        self.View: Munch | None = None
         self.background = QLabel(self)  # QLabel that holds the background image
-        self.foreground_image: Optional[QImage] = None  # is a QImage, we'll get object images from it
-        self.nav_image: Optional[QImage] = None
-        self.pocket_bitmap: Optional[QImage] = None
+        self.foreground_image: QImage | None = None  # is a QImage, we'll get object images from it
+        self.nav_image: QImage | None = None
+        self.pocket_bitmap: QImage | None = None
         self.view_is_fullscreen = self.options.DisplayType.lower() == "fullscreen"
 
         self.sleep_event_loop = QEventLoop()  # useful for synchronous GEMS actions -- blocks ui until done.
 
         # holders for various view objects
-        self.object_pics: Dict[int, ViewImageObject] = dict()  # indexed by obj number
-        self.overlay_pics = dict()  # indexed by overlay filename stem
-        self.external_pics = dict()  # indexed by pic filename stem
-        self.nav_pics = dict()  # indexed by direction name (i.e., NavTop, NavLeft, NavBottom, NavRight)
-        self.sound_controls = dict()  # indexed by filename stem
-        self.video_controls = dict()  # indexed by filename stem
-        self.text_boxes = dict()  # indexed by hash
+        self.object_pics: dict[int, ViewImageObject] = {}  # indexed by obj number
+        self.overlay_pics = {}  # indexed by overlay filename stem
+        self.external_pics = {}  # indexed by pic filename stem
+        self.nav_pics = {}  # indexed by direction name (i.e., NavTop, NavLeft, NavBottom, NavRight)
+        self.sound_controls = {}  # indexed by filename stem
+        self.video_controls = {}  # indexed by filename stem
+        self.text_boxes = {}  # indexed by hash
 
         self.nav_extent: int = 30
 
@@ -221,11 +213,11 @@ class ViewPanel(QWidget):
         screen = gemsrun.APPLICATION.primaryScreen()
         self.screen_rect = screen.availableGeometry()
         self.orig_image_rect: QRect = self.screen_rect  # temp, until first bg image is loaded
-        self.background_scale: List[float] = [
+        self.background_scale: list[float] = [
             1.0,
             1.0,
         ]  # temp, until self.view_image_rect is determined
-        self.view_top_left_adjustment: List[int] = [
+        self.view_top_left_adjustment: list[int] = [
             0,
             0,
         ]  # temp, until self.background is potentially scaled
@@ -252,10 +244,10 @@ class ViewPanel(QWidget):
 
         self.show()
 
-    def geom_x_adjust(self, value: Union[int, float]) -> int:
+    def geom_x_adjust(self, value: int | float) -> int:
         return geom_x_adjust(value, self.background_scale[0])
 
-    def geom_y_adjust(self, value: Union[int, float]) -> int:
+    def geom_y_adjust(self, value: int | float) -> int:
         return geom_y_adjust(value, self.background_scale[1])
 
     def fail_dialog(self, caption: str, message: str):
@@ -271,11 +263,7 @@ class ViewPanel(QWidget):
         """
         if self.sleep_event_loop.isRunning():
             self.sleep_event_loop.quit()
-        QTimer.singleShot(
-            int(msec), 
-            self,
-            self.sleep_event_loop.quit
-        )
+        QTimer.singleShot(msec, self, self.sleep_event_loop.quit)
         self.sleep_event_loop.exec()
 
     def init_ui(self):
@@ -401,15 +389,13 @@ class ViewPanel(QWidget):
             nav_panel = get_resource("images", "nav_panel.png")
             self.nav_image = QImage(nav_panel)
 
-        # generate the 4 scaled versions needed for view
-        result = uiutils.create_nav_pics(
+        if result := uiutils.create_nav_pics(
             nav_panel_image=self.nav_image,
             temp_folder=self.options.TempFolder,
             view_width=self.width(),
             view_height=self.height(),
             nav_extent=self.nav_extent,
-        )
-        if result:
+        ):
             self.fail_dialog("Problem Generating Nav Images From Panel", result)
 
         # either load custom pocket image from env media folder, or use default one
@@ -469,8 +455,7 @@ class ViewPanel(QWidget):
                             overlay.height(),
                         )
 
-                        style_sheet = "QLabel{ "
-                        style_sheet += "background-color: rgba(0,0,0,0%); "
+                        style_sheet = "QLabel{ " + "background-color: rgba(0,0,0,0%); "
                         style_sheet += " }"
                         # handle image transparency
                         label.setStyleSheet(style_sheet)
@@ -655,6 +640,7 @@ class ViewPanel(QWidget):
                     QPoint(0, 0),
                     QPoint(self.width() - self.nav_extent, 0),
                 ),
+                strict=False,
             )
         )
         for nav_id, nav_pic in self.nav_pics.items():
@@ -674,7 +660,6 @@ class ViewPanel(QWidget):
             event.Skip()
 
     def cleanup_view(self):
-
         # Remove Objects
         # NOTE: Unlike in wx, this cleanup might not be necessary!
         self.dragging_object, self.hovering_object = None, None
@@ -741,9 +726,8 @@ class ViewPanel(QWidget):
             if not asynchronous:
                 self.sleep(msec=500)  # it takes a moment to get going, only then is duration available.
                 time_left = player.duration() - 500
-                if time_left > 0:
-                    if player.is_playing():
-                        self.sleep(msec=time_left)
+                if time_left > 0 and player.is_playing():
+                    self.sleep(msec=time_left)
 
         except Exception as e:
             log.error(f'Playback of sound "{sound_path.name}" failed: {e}')
@@ -755,24 +739,23 @@ class ViewPanel(QWidget):
     @staticmethod
     def valid_api_call(expression: str) -> tuple:
         if not expression:
-            return tuple()
+            return ()
 
         try:
             func, params = func_str_parts(cmd=expression)
-        except:
+        except Exception:
             return ()
 
         if func in chain(VALID_CONDITIONS, VALID_ACTIONS, VALID_TRIGGERS):
             return func, params
-        else:
-            log.warning(f"The GEMS API does not expose any method called '{func}'.")
-            return tuple()
+        log.warning(f"The GEMS API does not expose any method called '{func}'.")
+        return ()
 
     def safe_eval(self, expression: str):
         # get parts
         try:
             fn, param_list = func_str_parts(cmd=expression)
-        except:
+        except Exception:
             log.critical(f"ERROR: '{expression}' is an Unknown or mis-parameterized function string.")
             return None
 
@@ -789,14 +772,10 @@ class ViewPanel(QWidget):
         param_values = [get_param(item) for item in param_list]
         ok_params = [is_safe_value(val) for val in param_values]
 
-        # if here, it should be safe to eval the function text
         if all(ok_params):
             return eval(f"self.{expression}")  # NOTE: before you freak out about eval(), see the safestrfunc module
-        else:
-            log.critical(
-                "ERROR: The GEMS API only supports constant values as method parameters (including list items)."
-            )
-            return None
+        log.critical("ERROR: The GEMS API only supports constant values as method parameters (including list items).")
+        return None
 
     def do_action(self, condition: str, action: str):
         log.debug(f"do_action fired at after vt+ {timeit.default_timer() - self.view_start_time} secs.")
@@ -937,20 +916,15 @@ class ViewPanel(QWidget):
         if source_id == target_id:
             return
 
-        if source_view_id == -1:
-            Source_View_Id = self.view_id
-        else:
-            Source_View_Id = source_view_id
+        Source_View_Id = self.view_id if source_view_id == -1 else source_view_id
         source_object = self.db.Views[str(Source_View_Id)].Objects[str(source_id)]
         target_object = self.db.Views[str(self.view_id)].Objects[str(target_id)]
 
         trigger = f"DroppedOn({source_object.Id})"
         valid_drop = any(
-            [
-                action
-                for action in target_object.Actions.values()
-                if action.Enabled and action.Trigger.replace(" ", "") == trigger
-            ]
+            action
+            for action in target_object.Actions.values()
+            if action.Enabled and action.Trigger.replace(" ", "") == trigger
         )
 
         if valid_drop:
@@ -1027,6 +1001,7 @@ class ViewPanel(QWidget):
     # -------------------------------------------
 
     def var_in_text(self, thetext: str) -> str:
+        # sourcery skip: remove-unnecessary-cast
         """
         Search for variable specifiers in input string, e.g., [FirstName].
         If the variable currently is set, specifier is replaced by contents.
@@ -1056,6 +1031,7 @@ class ViewPanel(QWidget):
         return newtext
 
     def VarValueIs(self, variable: str, value: str) -> bool:
+        # sourcery skip: remove-unnecessary-cast
         """
         This condition returns <i>True</i> if the user created token <b><i>Variable</i></b> exists and currently has
         the value <b><i>value</i></b>.
@@ -1071,7 +1047,10 @@ class ViewPanel(QWidget):
         :scope viewobjectglobalpocket
         :mtype condition
         """
-        return variable not in self.db.Variables or str(self.db.Variables[variable]) != str(value)
+        return (
+            variable not in self.db.Variables
+            or str(self.db.Variables[variable]) != value
+        )
 
     def VarExists(self, variable: str) -> bool:
         """
@@ -1549,7 +1528,7 @@ class ViewPanel(QWidget):
 
         sound_path = Path(sound_file) if Path(sound_file).is_file() else Path(self.options.MediaPath, sound_file)
         log.info(f"Requesting audio playback: {sound_path}")
-        
+
         if not sound_path.exists():
             log.error(f"Audio file does not exist: {sound_path}")
             return
@@ -1570,7 +1549,7 @@ class ViewPanel(QWidget):
             from gemsrun.utils.audioutils import get_audio_backend_info
             info = get_audio_backend_info()
             log.info(f"Audio backend diagnostics: {info}")
-            
+
             if not info['available_backends']:
                 log.warning("No audio backends available. Consider installing:")
                 log.warning("- PulseAudio (paplay) for Linux")
@@ -1640,7 +1619,7 @@ class ViewPanel(QWidget):
 
         video_path = Path(self.options.MediaPath, video_file)
         video_name = Path(video_path).stem
-        is_gif = video_path.suffix.lower() in ['.gif']
+        is_gif = video_path.suffix.lower() in {'.gif'}
 
         if not self.options.PlayMedia and not is_gif:
             log.warning("Media playback is not enabled.")

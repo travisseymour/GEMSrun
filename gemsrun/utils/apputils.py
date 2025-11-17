@@ -16,14 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import sys
+from importlib.resources import as_file, files
 from pathlib import Path
-
 import platform
-
-
-from importlib.resources import files, as_file
-
+import sys
 
 OS = platform.system()
 

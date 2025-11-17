@@ -123,7 +123,7 @@ docstring-code-format = true
 # ==========================
 [tool.pyright]
 pythonVersion = "3.11"
-typeCheckingMode = "strict"
+typeCheckingMode = "basic"  # "strict"
 
 # Paths where your main code lives
 include = [
@@ -145,10 +145,17 @@ venvPath = "/home/nogard/GLOBALVENVS/"
 venv = "GEMSrun"
 
 # Avoid going crazy over unknown 3rd-party types:
-reportMissingTypeStubs = "warning"
-reportUnknownMemberType = "warning"
-reportUnknownArgumentType = "warning"
-reportUnknownVariableType = "warning"
-reportUnknownParameterType = "warning"
+# reportMissingTypeStubs = "warning"
+# reportUnknownMemberType = "warning"
+# reportUnknownArgumentType = "warning"
+# reportUnknownVariableType = "warning"
+# reportUnknownParameterType = "warning"
 
 useLibraryCodeForTypes = true
+
+# pyright is being too noisy
+reportUnknownParameterType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownVariableType = "none"
+reportUnknownMemberType = "none"
+reportUnknownLambdaType = "none"

@@ -49,8 +49,8 @@ class ParamDialog(QDialog):
 
         # setup initial validations for text fields
 
-        self.ui.envLineEdit.setStyleSheet(ERROR if not self.ui.envLineEdit.text() else NORMAL)
-        self.ui.userLineEdit.setStyleSheet(ERROR if not self.ui.userLineEdit.text() else NORMAL)
+        self.ui.envLineEdit.setStyleSheet(NORMAL if self.ui.envLineEdit.text() else ERROR)
+        self.ui.userLineEdit.setStyleSheet(NORMAL if self.ui.userLineEdit.text() else ERROR)
 
         # create change handlers for text fields
 
@@ -85,7 +85,7 @@ class ParamDialog(QDialog):
 
     def text_changing(self, widget, key: str, content: str):
         # highlight bad data
-        widget.setStyleSheet(ERROR if not content else NORMAL)
+        widget.setStyleSheet(NORMAL if content else ERROR)
         # update data
         if widget == self.ui.envLineEdit:
             if not Path(content.strip()).is_file():

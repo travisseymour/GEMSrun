@@ -17,8 +17,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from pathlib import Path
-import re
 from pprint import pprint
+import re
 import textwrap
 
 # NOTE: You Must PEP8 the code in pycharm first, regex patterns assume you will!
@@ -41,22 +41,22 @@ INFO_PATTERN = r"def ([A-Za-z]+)[^\n]+\n[^']+'''([^'}]+)'''"  # needs multiline 
 #         ':scope viewobjectglobalpocket    :mtype condition
 
 
-def fix_param(params: list) -> list:
-    res = list()
-    for param in params:
-        left, right = param
-        Name, Type = left.split(":")
-        Type = Type.split("=")[0]
-        Name, Type = Name.strip(), Type.strip()
-        if Name == "skiplog":
+def fix_param(parameters: list) -> list:
+    res = []
+    for parameter in parameters:
+        left, right = parameter
+        name, _type = left.split(":")
+        _type = _type.split("=")[0]
+        name, _type = name.strip(), _type.strip()
+        if name == "skiplog":
             continue
-        Default = right.split("=")[-1].strip()
-        if Default:
-            if Type in ("int", "float"):
-                Default = eval(Default)
-            elif Type == "bool" and Default in ("True", "False"):
-                Default = eval(Default)
-        item = dict(Name=Name, Type=Type, Default=Default)
+        default = right.split("=")[-1].strip()
+        if default:
+            if _type in ("int", "float"):
+                default = eval(default)
+            elif _type == "bool" and default in ("True", "False"):
+                default = eval(default)
+        item = dict(Name=name, Type=_type, Default=default)
         res.append(item)
     return res
 
@@ -94,7 +94,7 @@ func_infos = dict(func_infos)
 # ... remove any without proper scope and mtype markers
 func_infos = {k: v for k, v in func_infos.items() if ":scope" in v and ":mtype" in v}
 # ... remove any for which we don't have a func def
-func_infos = {k: v for k, v in func_infos.items() if k in func_defs.keys()}
+func_infos = {k: v for k, v in func_infos.items() if k in func_defs}
 
 # ... convert info into dict
 func_infos = {k: format_info(v) for k, v in func_infos.items()}
@@ -105,7 +105,7 @@ func_infos = {k: format_info(v) for k, v in func_infos.items()}
 # pprint(func_defs)
 
 # combine
-for func in func_infos.keys():
+for func in func_infos:
     func_infos[func]["Definition"] = func_defs[func]
 
 # show final

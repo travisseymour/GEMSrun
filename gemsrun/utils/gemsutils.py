@@ -16,19 +16,21 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from gemsrun import log
+import hashlib
+import inspect
 import os
-from typing import Union
+from pathlib import Path
 import shutil
 import tempfile
-import traceback
-import inspect
-import urllib.request
-import urllib.error
-import hashlib
-from pathlib import Path
-from PIL import Image
 import timeit
+import traceback
+from typing import Union
+import urllib.error
+import urllib.request
+
+from PIL import Image
+
+from gemsrun import log
 
 
 def create_temporary_folder() -> Path:
@@ -51,17 +53,17 @@ def check_media(db_filename, database, media_folder) -> tuple:
     cursor = database.cursor()
     # load all the views images
     cursor.execute("SELECT Foreground, Background, Overlay FROM views")
-    allrecords = cursor.fetchall()
+    all_records = cursor.fetchall()
 
     # define a helper function
-    def fileOK(fn):
-        return (not fn) or os.path.isfile(os.path.join(media_folder, os.path.basename(fn)))
+    def file_ok(file_name: str):
+        return (not file_name) or os.path.isfile(os.path.join(media_folder, os.path.basename(file_name)))
 
     # loop through and update outcomelist with any missing files
-    for arecord in allrecords:
-        for afile in arecord:
-            if fileOK(afile) is False:
-                outcomelist.append(afile)
+    for record in all_records:
+        for file in record:
+            if file_ok(file) is False:
+                outcomelist.append(file)
     return tuple(set(outcomelist))
 
 
@@ -83,11 +85,11 @@ def func_params():
     return res
 
 
-def check_connectivity(reference):
+def check_connectivity(url: str):
     try:
-        log.debug("starting to check connectivity...")
+        log.debug(f"starting to check connectivity {url}...")
         start = timeit.default_timer()
-        response = urllib.request.urlopen(reference, timeout=1)
+        response = urllib.request.urlopen(url, timeout=1)
         log.debug(f"web response was {response}")
         log.debug(f"finished checking connectivity after {timeit.default_timer() - start:0.4f} sec.")
         return True
@@ -101,13 +103,12 @@ def string_hash(s: str) -> str:
     return ho.hexdigest()
 
 
-def get_image_dims(img_file: Path) -> tuple:
+def get_image_dims(img_file: Path) -> tuple[int, int]:
     im = Image.open(img_file)
-    sz = im.size
-    return sz
+    return im.size
 
 
-def boundary(min_value: Union[int, float], my_value: Union[int, float], max_value: Union[int, float]):
+def boundary(min_value: int | float, my_value: int | float, max_value: int | float):
     if my_value < min_value:
         return min_value
     elif my_value > max_value:

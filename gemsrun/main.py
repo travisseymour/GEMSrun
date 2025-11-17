@@ -1,20 +1,18 @@
 import optparse
 from pathlib import Path
+import sys
 from typing import Optional
 
-from PySide6.QtCore import Qt, QCoreApplication, QSettings
-import sys
-
+from munch import Munch
+from PySide6.QtCore import QCoreApplication, QSettings, Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 import gemsrun
-from gemsrun.gui import mainwindow
 from gemsrun import app_short_name
-from munch import Munch
-
-from gemsrun.session import sessionsetup as ssetup
+from gemsrun.gui import mainwindow
 from gemsrun.gui.parawindow import ParamDialog
+from gemsrun.session import sessionsetup as ssetup
 
 # Avoid forcing QT multimedia backend. Let Qt auto-detect best available plugins.
 # If users need to override, they can set QT_MEDIA_BACKEND in their environment before launch.

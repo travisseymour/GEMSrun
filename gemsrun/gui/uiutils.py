@@ -16,10 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from PySide6.QtCore import QSize
-from PySide6.QtGui import QImage, QTransform
-from PySide6.QtCore import Qt
 from pathlib import Path
+
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QImage, QTransform
 
 from gemsrun import log
 
