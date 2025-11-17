@@ -112,6 +112,12 @@ def check_connectivity(url: str):
         log.debug(f"web response was {response}")
         log.debug(f"finished checking connectivity after {timeit.default_timer() - start:0.4f} sec.")
         return True
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            log.debug("connectivity confirmed but remote limited requests (HTTP 429)")
+            return True
+        log.warning(f"fail to check connectivity! {e}")
+        return False
     except (TimeoutError, urllib.error.URLError, ssl.SSLError) as e:  # <-- Fix here
         log.warning(f"fail to check connectivity! {e}")
         return False
