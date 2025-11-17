@@ -18,13 +18,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 from importlib.metadata import version
-import tomli
+import tomllib
 
 
 def get_version_from_pyproject():
-    pyproject_path = os.path.join(os.path.dirname(__file__), "..", "..", "pyproject.toml")
+    pyproject_path = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "..",
+        "pyproject.toml",
+    )
+    pyproject_path = os.path.abspath(pyproject_path)
+
     with open(pyproject_path, "rb") as f:
-        pyproject_data = tomli.load(f)
+        pyproject_data = tomllib.load(f)
         return pyproject_data.get("project", {}).get("version", "Unknown")
 
 

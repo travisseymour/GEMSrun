@@ -13,7 +13,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "GEMSrun"
-description = "Enviroment Runner for GEMS (Graphical Environment Management System)"
+description = "Environment Runner for GEMS (Graphical Environment Management System)"
 version = "2025.10.5.2"
 authors = [{name = "Travis L. Seymour, PhD", email = "nogard@ucsc.edu"}]
 license = {text = "GPLv3"}
@@ -33,15 +33,12 @@ dependencies = [
   "loguru>=0.7.3,<1.0.0",
   "PySide6>=6.9.0,<7.0.0",
   "PyYAML>=6.0.2,<7.0.0",
-  "appdirs>=1.4.4,<2.0.0",
   "gTTS>=2.5.4,<3.0.0",
   "pillow>=11.2.1,<12.0.0",
-  "six>=1.17.0,<2.0.0",
-  "regex>=2024.11.6,<2025.0.0",
+  "regex>=2025.11.3,<2026.0.0",
   "platformdirs>=4.3.7,<5.0.0",
-  "tomli>=2.2.1,<3.0.0",
   "munch>=4.0.0,<5.0.0",
-  "playsound3>=0.0.1",
+  "playsound3>=3.0.0,<4.0.0",
 ]
 
 [project.urls]
@@ -75,6 +72,83 @@ include-package-data = true
 [tool.black]
 line-length = 120
 
+# ==========================
+# Ruff configuration
+# ==========================
+
 [tool.ruff]
+target-version = "py311"
 line-length = 120
-lint.ignore = ["F821", "F841", "E722"]  # undefined name, assigned but unused variable, bare except
+
+# ==========================
+# Ruff configuration
+# ==========================
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "W",   # pycodestyle warnings
+  "I",   # isort (imports)
+  "B",   # flake8-bugbear
+  "UP",  # pyupgrade
+  "N",   # pep8-naming
+]
+ignore = [
+  "E501",  # line length (let formatter enforce; uncomment to ignore)
+  "F821",  # undefined name
+  "F841",  # assigned but unused variable
+  "E722",  # bare except
+]
+
+# Things you want reported but not auto-fixed:
+unfixable = [
+  "F401",  # unused imports: show them, but do not let Ruff auto-delete
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true
+
+
+# ==========================
+# Pyright configuration
+# (Pyright >= 1.1.311 can read this)
+# ==========================
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+
+# Paths where your main code lives
+include = [
+  "gemsrun",
+]
+
+exclude = [
+  "**/__pycache__",
+  ".venv",
+  "build",
+  "dist",
+  ".mypy_cache",
+  ".pytest_cache",
+  "compiled_modules",
+]
+
+# If you use a local venv:
+venvPath = "/home/nogard/GLOBALVENVS/"
+venv = "GEMSrun"
+
+# Avoid going crazy over unknown 3rd-party types:
+reportMissingTypeStubs = "warning"
+reportUnknownMemberType = "warning"
+reportUnknownArgumentType = "warning"
+reportUnknownVariableType = "warning"
+reportUnknownParameterType = "warning"
+
+useLibraryCodeForTypes = true
