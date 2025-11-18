@@ -561,7 +561,7 @@ class NavImageObject(QLabel):
         style_sheet = "QLabel{background-color: rgba(0,0,0,0%)} "  # transparent background
 
         img_file = Path(nav_image_folder, file_codex[nav_type]).resolve()
-        log.warning(f"{img_file=}; {Path(img_file).is_file()=}")
+        # log.warning(f"{img_file=}; {Path(img_file).is_file()=}")
         try:
             image = QImage(str(img_file))
             self.setFixedSize(image.width(), image.height())
