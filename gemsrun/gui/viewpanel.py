@@ -1828,10 +1828,6 @@ class ViewPanel(QWidget):
 
         if speech_path.is_file():
             log.debug(f'TTS resource already generated and in {str(speech_path)}!')
-            try:
-                self.play_sound(sound_file=str(speech_path))
-            except Exception as e:
-                log.error(f'Problem playing speech audio file called {str(speech_path)}: {e}')
         else:
             log.debug(f'TTS resource does not exist in {str(speech_path)}, will try to generate it using web.')
             try:
@@ -1846,10 +1842,10 @@ class ViewPanel(QWidget):
                           f'will just create a temporary file.')
                 speech_path = tempfile.TemporaryFile()
                 tts.save(str(speech_path))
-            try:
-                self.play_sound(sound_file=str(speech_path))
-            except Exception as e:
-                log.error(f'Problem playing speech audio file called {str(speech_path)}: {e}')
+        try:
+            self.play_sound(sound_file=str(speech_path))
+        except Exception as e:
+            log.error(f'Problem playing speech audio file called {str(speech_path)}: {e}')
 
     def HidePockets(self):
         """
