@@ -288,7 +288,7 @@ class ViewPocketObject(QLabel):
     Assumes parent is ViewPanel instance
     """
 
-    def __init__(self, parent, pocket_id: int):
+    def __init__(self, parent: ViewPanel, pocket_id: int):
         super().__init__(parent=parent)
         self.db: Munch = self.parent().db
         self.object_info: Munch = Munch({"name": "", "view_id": -1, "Id": -1, "image": None})
@@ -419,6 +419,30 @@ class ViewPocketObject(QLabel):
             # dragged view object onto empty pocket!
             log.debug(f'"{source_object_name}" was dropped on empty Pocket #"{self.pocket_id}"')
 
+            current_view = self.parent().db.Views.get(str(self.parent().view_id))
+            source_object = None
+            if current_view:
+                source_object = current_view.Objects.get(str(source_object_id))
+
+            if source_object is None or not getattr(source_object, "Takeable", False):
+                log.info(
+                    dict(
+                        Kind="Mouse",
+                        Type="PocketDropNotTakeable",
+                        View=self.parent().View.Name,
+                        Target=source_object_name,
+                        Result="Invalid|NotTakeable",
+                        TimeTime=self.parent().get_task_elapsed(),
+                        ViewTime=self.parent().view_elapsed(),
+                    )
+                )
+
+                if self.parent().dragging_object:
+                    self.parent().dragging_object.show()
+                self.parent().dragging_object = None
+                ev.ignore()
+                return
+
             log.info(
                 dict(
                     Kind="Mouse",
@@ -529,7 +553,7 @@ class NavImageObject(QLabel):
     Assumes parent is ViewPanel instance
     """
 
-    def __init__(self, parent, nav_type: str, nav_actions: list, nav_image_folder: Path):
+    def __init__(self, parent: ViewPanel, nav_type: str, nav_actions: list, nav_image_folder: Path):
         super().__init__(parent=parent)
         self.nav_type: str = nav_type
         self.nav_actions: list = nav_actions
@@ -731,7 +755,7 @@ class VideoObject(QVideoWidget):
 
     def __init__(
         self,
-        parent,
+        parent: ViewPanel,
         video_path: Path,
         pos: QPoint,
         size: QSize,
@@ -855,7 +879,7 @@ class AnimationObject(QLabel):
 
     def __init__(
         self,
-        parent,
+        parent: ViewPanel,
         video_path: Path,
         pos: QPoint,
         size: QSize,
