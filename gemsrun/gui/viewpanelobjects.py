@@ -126,7 +126,7 @@ class ViewImageObject(QLabel):
             self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
     def paintEvent(self, event):
-        super(ViewImageObject, self).paintEvent(event)
+        super().paintEvent(event)
         painter = QPainter(self)
 
         def show_name():
@@ -141,7 +141,12 @@ class ViewImageObject(QLabel):
             painter.drawText(name_rect, Qt.AlignmentFlag.AlignLeft, self.object.Name)
 
         def show_frame():
-            x, y, w, h = self.rect().getCoords()
+            r = self.rect()
+            x = r.left()
+            y = r.top()
+            w = r.width()
+            h = r.height()
+
             painter.setPen(QColor("yellow"))
             painter.drawRect(QRect(x, y, w - 1, h - 1))
 
@@ -284,7 +289,7 @@ class ViewPocketObject(QLabel):
     """
 
     def __init__(self, parent, pocket_id: int):
-        super(ViewPocketObject, self).__init__(parent=parent)
+        super().__init__(parent=parent)
         self.db: Munch = self.parent().db
         self.object_info: Munch = Munch({"name": "", "view_id": -1, "Id": -1, "image": None})
         self.pocket_id: int = pocket_id
@@ -525,7 +530,7 @@ class NavImageObject(QLabel):
     """
 
     def __init__(self, parent, nav_type: str, nav_actions: list, nav_image_folder: Path):
-        super(NavImageObject, self).__init__(parent=parent)
+        super().__init__(parent=parent)
         self.nav_type: str = nav_type
         self.nav_actions: list = nav_actions
 
@@ -533,6 +538,7 @@ class NavImageObject(QLabel):
             zip(
                 ("NavTop", "NavBottom", "NavLeft", "NavRight"),
                 ("nav_top.png", "nav_bottom.png", "nav_left.png", "nav_right.png"),
+                strict=False,
             )
         )
 
@@ -548,6 +554,7 @@ class NavImageObject(QLabel):
                     QSize(extent, height),
                     QSize(extent, height),
                 ),
+                strict=False,
             )
         )
 
@@ -608,13 +615,13 @@ class TextBoxObject(QLabel):
 
     def __init__(
         self,
-        parent: "ViewPanel",
+        parent: ViewPanel,
         message: str,
         left: int = 0,
         top: int = 0,
         duration: float = 0.0,
-        fg_color: list = (255, 255, 255, 255),
-        bg_color: list = (0, 0, 0, 255),
+        fg_color: list | tuple = (255, 255, 255, 255),
+        bg_color: list | tuple = (0, 0, 0, 255),
         font_size: int = 12,
         bold: bool = False,
     ):

@@ -337,7 +337,9 @@ class ViewPanel(QWidget):
                     pixmap_height,
                 )
             else:
-                parent_left, parent_top, parent_width, parent_height = self.parent().rect().getCoords()
+                r = self.parent().rect()
+                parent_width, parent_height = (r.width(), r.height())
+
                 pixmap_width, pixmap_height = pixmap.width(), pixmap.height()
                 screen_width, screen_height = (
                     self.screen_rect.width(),
@@ -460,8 +462,7 @@ class ViewPanel(QWidget):
                             overlay.height(),
                         )
 
-                        style_sheet = "QLabel{ " + "background-color: rgba(0,0,0,0%); "
-                        style_sheet += " }"
+                        style_sheet = "QLabel{ " + "background-color: rgba(0,0,0,0%); }"
                         # handle image transparency
                         label.setStyleSheet(style_sheet)
 
@@ -693,7 +694,7 @@ class ViewPanel(QWidget):
     def closeEvent(self, event: QCloseEvent) -> None:
         try:
             self.ttimer.stop()
-        except:
+        except Exception:
             ...
 
         if self.sleep_event_loop.isRunning():
