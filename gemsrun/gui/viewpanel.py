@@ -897,8 +897,11 @@ class ViewPanel(QWidget):
         )
 
         # first, remove object from view
-        self.db.Views[str(self.view_id)].Objects[dropped_object_id].Visible = False  # set object to visible in db
-        self.object_pics[int(dropped_object_id)].hide()
+        try:
+            self.db.Views[str(self.view_id)].Objects[dropped_object_id].Visible = False  # set object to visible in db
+            self.object_pics[int(dropped_object_id)].hide()
+        except Exception:
+            ...
 
         # object appears in pocket
         # TODO: from wxpython...port this to Qt? Currently image is stretched all funny to fill pocket.
@@ -1828,6 +1831,10 @@ class ViewPanel(QWidget):
 
         if speech_path.is_file():
             log.debug(f'TTS resource already generated and in {str(speech_path)}!')
+            try:
+                self.play_sound(sound_file=str(speech_path))
+            except Exception as e:
+                log.error(f'Problem playing speech audio file called {str(speech_path)}: {e}')
         else:
             log.debug(f'TTS resource does not exist in {str(speech_path)}, will try to generate it using web.')
             try:

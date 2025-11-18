@@ -45,7 +45,7 @@ class InfoDialog(QtWidgets.QDialog):
         self.init_global_info()
         self.update_info()
 
-        self.timer = QTimer()
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_info)
         self.timer.start(1000)
 
