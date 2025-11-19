@@ -316,7 +316,11 @@ class ViewPanel(QWidget):
             self.orig_image_rect = pixmap.rect()  # save rect of unaltered bg_image
 
             screen_geom = self.screen_rect
-            available_geom = gemsrun.APPLICATION.primaryScreen().availableGeometry()
+
+            if self.options.DisplayType.lower() == "fullscreen":
+                available_geom = gemsrun.APPLICATION.primaryScreen().geometry()
+            else:
+                available_geom = gemsrun.APPLICATION.primaryScreen().availableGeometry()
             screen_width, screen_height = screen_geom.width(), screen_geom.height()
             available_width, available_height = available_geom.width(), available_geom.height()
             available_top_left = available_geom.topLeft()
