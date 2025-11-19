@@ -349,10 +349,11 @@ class ViewPanel(QWidget):
                 parent_width, parent_height = (r.width(), r.height())
 
                 pixmap_width, pixmap_height = pixmap.width(), pixmap.height()
-                center_point = available_geom.center()
+                center_x = available_top_left.x() + available_width // 2
+                center_y = available_top_left.y() + available_height // 2
                 top_left = QPoint(
-                    center_point.x() - pixmap_width // 2,
-                    center_point.y() - pixmap_height // 2,
+                    center_x - pixmap_width // 2,
+                    center_y - pixmap_height // 2,
                 )
                 self.parent().setGeometry(
                     top_left.x(),
