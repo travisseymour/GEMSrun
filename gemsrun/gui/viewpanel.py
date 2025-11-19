@@ -249,6 +249,15 @@ class ViewPanel(QWidget):
 
         self.show()
 
+    def _set_parent_geometry(self, x: int, y: int, width: int, height: int):
+        def apply_geometry():
+            self.parent().setGeometry(x, y, width, height)
+
+        if int(self.view_id) == int(self.options.Startview):
+            QTimer.singleShot(500, self, apply_geometry)
+        else:
+            apply_geometry()
+
     def geom_x_adjust(self, value: int | float) -> int:
         return geom_x_adjust(value, self.background_scale[0])
 
@@ -314,13 +323,12 @@ class ViewPanel(QWidget):
 
             if self.options.DisplayType.lower() in ("maximized", "fullscreen") or pixmap_is_xl:
                 # setup parent geom if this is the first view
-                if int(self.view_id) == int(self.options.Startview):
-                    self.parent().setGeometry(
-                        available_top_left.x(),
-                        available_top_left.y(),
-                        available_width,
-                        available_height,
-                    )
+                self._set_parent_geometry(
+                    available_top_left.x(),
+                    available_top_left.y(),
+                    available_width,
+                    available_height,
+                )
 
                 parent_width, parent_height = available_width, available_height
 
@@ -355,7 +363,7 @@ class ViewPanel(QWidget):
                     center_x - pixmap_width // 2,
                     center_y - pixmap_height // 2,
                 )
-                self.parent().setGeometry(
+                self._set_parent_geometry(
                     top_left.x(),
                     top_left.y(),
                     pixmap_width,
