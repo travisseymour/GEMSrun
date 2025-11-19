@@ -304,17 +304,19 @@ class ViewPanel(QWidget):
             pixmap = QPixmap.fromImage(QImage(str(bg_path.resolve())))
             self.orig_image_rect = pixmap.rect()  # save rect of unaltered bg_image
 
-            pixmap_is_xl = pixmap.width() > self.screen_rect.width() or pixmap.height() > self.screen_rect.height()
+            screen_geom = self.screen_rect
+            available_geom = gemsrun.APPLICATION.primaryScreen().availableGeometry()
+            screen_width, screen_height = screen_geom.width(), screen_geom.height()
+            available_width, available_height = available_geom.width(), available_geom.height()
+
+            pixmap_is_xl = pixmap.width() > available_width or pixmap.height() > available_height
 
             if self.options.DisplayType.lower() in ("maximized", "fullscreen") or pixmap_is_xl:
                 # setup parent geom if this is the first view
                 if int(self.view_id) == int(self.options.Startview):
-                    self.parent().setGeometry(0, 0, self.screen_rect.width(), self.screen_rect.height())
+                    self.parent().setGeometry(available_geom)
 
-                parent_width, parent_height = (
-                    self.screen_rect.width(),
-                    self.screen_rect.height(),
-                )
+                parent_width, parent_height = available_width, available_height
 
                 pixmap = pixmap.scaled(parent_width, parent_height, Qt.AspectRatioMode.KeepAspectRatio)
                 # note - at this point, the image size that fits best unless it happens to be same ratio as display,
@@ -341,13 +343,14 @@ class ViewPanel(QWidget):
                 parent_width, parent_height = (r.width(), r.height())
 
                 pixmap_width, pixmap_height = pixmap.width(), pixmap.height()
-                screen_width, screen_height = (
-                    self.screen_rect.width(),
-                    self.screen_rect.height(),
+                center_point = available_geom.center()
+                top_left = QPoint(
+                    center_point.x() - pixmap_width // 2,
+                    center_point.y() - pixmap_height // 2,
                 )
                 self.parent().setGeometry(
-                    screen_width // 2 - pixmap_width // 2,
-                    screen_height // 2 - pixmap_height // 2,
+                    top_left.x(),
+                    top_left.y(),
                     pixmap_width,
                     pixmap_height,
                 )
