@@ -249,14 +249,16 @@ class ViewPanel(QWidget):
 
         self.show()
 
-    def _set_parent_geometry(self, x: int, y: int, width: int, height: int):
+    def _set_parent_geometry(self, x, y, width, height):
         def apply_geometry():
             self.parent().setGeometry(x, y, width, height)
+            for pocket in (self.parent().pocket_objects or {}).values():
+                pocket.position_pockets()
 
-        # if int(self.view_id) == int(self.options.Startview):
-        QTimer.singleShot(500, self, apply_geometry)
-        # else:
-        # apply_geometry()
+        if int(self.view_id) == int(self.options.Startview):
+            QTimer.singleShot(500, self, apply_geometry)
+        else:
+            apply_geometry()
 
     def geom_x_adjust(self, value: int | float) -> int:
         return geom_x_adjust(value, self.background_scale[0])
