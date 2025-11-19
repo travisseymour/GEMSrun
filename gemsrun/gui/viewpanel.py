@@ -253,10 +253,10 @@ class ViewPanel(QWidget):
         def apply_geometry():
             self.parent().setGeometry(x, y, width, height)
 
-        if int(self.view_id) == int(self.options.Startview):
-            QTimer.singleShot(500, self, apply_geometry)
-        else:
-            apply_geometry()
+        # if int(self.view_id) == int(self.options.Startview):
+        QTimer.singleShot(500, self, apply_geometry)
+        # else:
+        # apply_geometry()
 
     def geom_x_adjust(self, value: int | float) -> int:
         return geom_x_adjust(value, self.background_scale[0])
