@@ -308,13 +308,19 @@ class ViewPanel(QWidget):
             available_geom = gemsrun.APPLICATION.primaryScreen().availableGeometry()
             screen_width, screen_height = screen_geom.width(), screen_geom.height()
             available_width, available_height = available_geom.width(), available_geom.height()
+            available_top_left = available_geom.topLeft()
 
             pixmap_is_xl = pixmap.width() > available_width or pixmap.height() > available_height
 
             if self.options.DisplayType.lower() in ("maximized", "fullscreen") or pixmap_is_xl:
                 # setup parent geom if this is the first view
                 if int(self.view_id) == int(self.options.Startview):
-                    self.parent().setGeometry(available_geom)
+                    self.parent().setGeometry(
+                        available_top_left.x(),
+                        available_top_left.y(),
+                        available_width,
+                        available_height,
+                    )
 
                 parent_width, parent_height = available_width, available_height
 
