@@ -294,6 +294,7 @@ class ViewPocketObject(QLabel):
         self.object_info: Munch = Munch({"name": "", "view_id": -1, "Id": -1, "image": None})
         self.pocket_id: int = pocket_id
         self.pocket_image: QPixmap = QPixmap()
+        self.pocket_adjust_timer: QTimer = QTimer(self)
         self.init_pocket_image()
         self.setAcceptDrops(True)
 
@@ -305,6 +306,12 @@ class ViewPocketObject(QLabel):
         else:
             self.pocket_image = QPixmap().fromImage(self.object_info.image)
         self.setPixmap(self.pocket_image)
+
+        # make sure pockets stay at the bottom of the view
+        self.position_pockets()
+        self.pocket_adjust_timer.start()
+
+    def position_pockets(self):
         self.move(
             QPoint(
                 self.pocket_image.width() * self.pocket_id + 5,
