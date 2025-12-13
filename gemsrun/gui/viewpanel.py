@@ -512,18 +512,24 @@ class ViewPanel(QWidget):
         if self.dragging:
             x, y = ev.position().x(), ev.position().y()
             x_offset, y_offset = self.view_top_left_adjustment
-            g = self.frameGeometry()
+            g = self.rect()  # local coords
             buffer = 50
 
-            nu_x = gu.boundary(g.left() + buffer - x_offset, x, g.right() - buffer - x_offset)
-            nu_y = gu.boundary(g.top() + buffer - y_offset, y, g.bottom() - buffer - y_offset)
+            bg_width = self.background.pixmap().width() if self.background.pixmap() else g.width()
+            bg_height = self.background.pixmap().height() if self.background.pixmap() else g.height()
+
+            # Constrain to the scaled image area inside the stage, not the whole stage
+            min_x = x_offset + buffer
+            max_x = x_offset + bg_width - buffer
+            min_y = y_offset + buffer
+            max_y = y_offset + bg_height - buffer
+
+            nu_x = gu.boundary(min_x, x, max_x)
+            nu_y = gu.boundary(min_y, y, max_y)
 
             if (x, y) != (nu_x, nu_y):
-                global_pos = self.mapToGlobal(self.pos())
-                self.cursor().setPos(
-                    int(global_pos.x() + nu_x - x_offset),
-                    int(global_pos.y() + nu_y - y_offset),
-                )
+                global_pos = self.mapToGlobal(QPoint(int(nu_x), int(nu_y)))
+                self.cursor().setPos(global_pos)
 
         ev.accept()
 
@@ -1673,13 +1679,16 @@ class ViewPanel(QWidget):
         size = None
 
         if within >= 0:
-            try:
-                pos = self.object_pics[within].pos()
-                size = self.object_pics[within].size()
-                self.object_pics[within].hide()
-            except IndexError:
-                log.warning(f'The "within" parameter ({within}) is not the id of an object in this view.'
-                            f' Showing video fullscreen instead.')
+            target = self.object_pics.get(int(within))
+            if target:
+                pos = target.pos()
+                size = target.size()
+                target.hide()
+            else:
+                log.warning(
+                    f'The "within" parameter ({within}) is not the id of an object in this view. '
+                    f"Showing video fullscreen instead."
+                )
 
         try:
             if is_gif:
