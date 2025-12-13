@@ -88,6 +88,7 @@ VALID_ACTIONS = [
     "HideObject",
     "PortalTo",
     "ShowImage",
+    "ShowImageWithin",
     "PlaySound",
     "StopSound",
     "StopAllSounds",
@@ -1533,6 +1534,99 @@ class ViewPanel(QWidget):
 
         except Exception as e:
             log.error(f'Unable to load external image from {str(pic_path.resolve())}: {e}')
+
+    def ShowImageWithin(
+        self,
+        image_file: str = "",
+        left: int = 0,
+        top: int = 0,
+        duration: float = 0.0,
+        click_through: bool = False,
+        within: int = -1,
+        HideTarget: bool = False,
+    ):
+        """
+        Like ShowImage, but if Within refers to a valid object, the image is scaled and positioned to that object's
+        bounds. Otherwise it falls back to Left/Top positioning. Optionally hides the target while overlaid.
+        :scope viewobjectpocket
+        :mtype action
+        """
+
+        log.info(
+            dict(
+                Kind="Action",
+                Type="ShowImageWithin",
+                View=self.View.Name,
+                **gu.func_params(),
+                Target=None,
+                Result="Valid",
+                TimeTime=self.get_task_elapsed(),
+                ViewTime=self.view_elapsed(),
+            )
+        )
+
+        pic_path = Path(self.options.MediaPath, image_file)
+        pic_name = Path(pic_path).stem
+        target = self.object_pics.get(int(within)) if within is not None else None
+
+        try:
+            pixmap = QPixmap(str(pic_path.resolve()))
+        except Exception as e:
+            log.error(f"Unable to load external image from {str(pic_path.resolve())}: {e}")
+            return
+
+        if pic_name in self.external_pics:
+            image = self.external_pics[pic_name]
+        else:
+            # Start with a neutral scaled image; we will resize/position below
+            image = ExternalImageObject(
+                self,
+                image_path=pic_path,
+                left=0,
+                top=0,
+                duration=duration,
+                click_through=click_through,
+                scale=(1.0, 1.0),
+            )
+            self.external_pics[pic_name] = image
+
+        if target:
+            target_rect = target.geometry()
+            target_was_visible = target.isVisible()
+            ratio = min(target_rect.width() / pixmap.width(), target_rect.height() / pixmap.height())
+            ratio = ratio if ratio > 0 else 1.0
+            scaled = pixmap.scaled(
+                int(pixmap.width() * ratio),
+                int(pixmap.height() * ratio),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            image.setPixmap(scaled)
+            image.setFixedSize(scaled.width(), scaled.height())
+            image.move(target_rect.topLeft())
+            if HideTarget:
+                target.hide()
+                if duration and target_was_visible:
+                    QTimer.singleShot(
+                        int(duration * 1000),
+                        self,
+                        target.show,
+                    )
+        else:
+            # Fall back to standard behavior using stage-aligned coordinates
+            ratio_x, ratio_y = self.background_scale
+            scaled = pixmap.scaled(
+                int(pixmap.width() * ratio_x),
+                int(pixmap.height() * ratio_y),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            image.setPixmap(scaled)
+            image.setFixedSize(scaled.width(), scaled.height())
+            image.move(self.geom_x_adjust(left), self.geom_y_adjust(top))
+
+        image.show()
+        self.reset_z_pos()
 
     def PortalTo(self, view_id: int):
         """
