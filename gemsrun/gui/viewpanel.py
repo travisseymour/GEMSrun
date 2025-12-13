@@ -40,6 +40,7 @@ from PySide6.QtGui import (
     QDragMoveEvent,
     QDropEvent,
     QImage,
+    QPainter,
     QPixmap,
 )
 from PySide6.QtWidgets import QInputDialog, QLabel, QMessageBox, QWidget
@@ -261,10 +262,10 @@ class ViewPanel(QWidget):
             apply_geometry()
 
     def geom_x_adjust(self, value: int | float) -> int:
-        return geom_x_adjust(value, self.background_scale[0])
+        return self.view_top_left_adjustment[0] + geom_x_adjust(value, self.background_scale[0])
 
     def geom_y_adjust(self, value: int | float) -> int:
-        return geom_y_adjust(value, self.background_scale[1])
+        return self.view_top_left_adjustment[1] + geom_y_adjust(value, self.background_scale[1])
 
     def fail_dialog(self, caption: str, message: str):
         QMessageBox.critical(self, caption, message, QMessageBox.StandardButton.Ok)
@@ -311,74 +312,61 @@ class ViewPanel(QWidget):
         try:
             if not bg_path.is_file():
                 raise FileNotFoundError
+            display_type = self.options.DisplayType.lower()
+            stage_width: int
+            stage_height: int
+
+            if display_type in ("maximized", "fullscreen"):
+                available_geom = (
+                    gemsrun.APPLICATION.primaryScreen().geometry()
+                    if display_type == "fullscreen"
+                    else gemsrun.APPLICATION.primaryScreen().availableGeometry()
+                )
+                stage_width, stage_height = available_geom.width(), available_geom.height()
+                available_top_left = available_geom.topLeft()
+                self._set_parent_geometry(
+                    available_top_left.x(),
+                    available_top_left.y(),
+                    stage_width,
+                    stage_height,
+                )
+            else:
+                # Use the size of the Start View (EnvDims) for all other views in windowed mode
+                try:
+                    stage_width, stage_height = (int(self.options.EnvDims[0]), int(self.options.EnvDims[1]))
+                except Exception:
+                    stage_width, stage_height = self.screen_rect.width(), self.screen_rect.height()
+
+            # Always size the view panel to the chosen stage size; individual images are letterboxed within.
+            self.setGeometry(0, 0, stage_width, stage_height)
 
             pixmap = QPixmap.fromImage(QImage(str(bg_path.resolve())))
             self.orig_image_rect = pixmap.rect()  # save rect of unaltered bg_image
 
-            screen_geom = self.screen_rect
+            scale_factor = min(stage_width / self.orig_image_rect.width(), stage_height / self.orig_image_rect.height())
+            scaled_width = int(self.orig_image_rect.width() * scale_factor)
+            scaled_height = int(self.orig_image_rect.height() * scale_factor)
 
-            if self.options.DisplayType.lower() == "fullscreen":
-                available_geom = gemsrun.APPLICATION.primaryScreen().geometry()
-            else:
-                available_geom = gemsrun.APPLICATION.primaryScreen().availableGeometry()
-            screen_width, screen_height = screen_geom.width(), screen_geom.height()
-            available_width, available_height = available_geom.width(), available_geom.height()
-            available_top_left = available_geom.topLeft()
+            self.background_scale = [scale_factor, scale_factor]
 
-            pixmap_is_xl = pixmap.width() > available_width or pixmap.height() > available_height
+            self.view_top_left_adjustment = [
+                max(0, (stage_width - scaled_width) // 2),
+                max(0, (stage_height - scaled_height) // 2),
+            ]
 
-            if self.options.DisplayType.lower() in ("maximized", "fullscreen") or pixmap_is_xl:
-                # setup parent geom if this is the first view
-                self._set_parent_geometry(
-                    available_top_left.x(),
-                    available_top_left.y(),
-                    available_width,
-                    available_height,
-                )
-
-                parent_width, parent_height = available_width, available_height
-
-                pixmap = pixmap.scaled(parent_width, parent_height, Qt.AspectRatioMode.KeepAspectRatio)
-                # note - at this point, the image size that fits best unless it happens to be same ratio as display,
-                #        in which case it will be the same as the display size
-
-                self.background_scale = [
-                    pixmap.width() / self.orig_image_rect.width(),
-                    pixmap.height() / self.orig_image_rect.height(),
-                ]
-
-                pixmap_width, pixmap_height = pixmap.width(), pixmap.height()
-                self.view_top_left_adjustment = [
-                    max(0, (parent_width - pixmap_width) // 2),
-                    max(0, (parent_height - pixmap_height) // 2),
-                ]
-                self.setGeometry(
-                    self.view_top_left_adjustment[0],
-                    self.view_top_left_adjustment[1],
-                    pixmap_width,
-                    pixmap_height,
-                )
-            else:
-                r = self.parent().rect()
-                parent_width, parent_height = (r.width(), r.height())
-
-                pixmap_width, pixmap_height = pixmap.width(), pixmap.height()
-                center_x = available_top_left.x() + available_width // 2
-                center_y = available_top_left.y() + available_height // 2
-                top_left = QPoint(
-                    center_x - pixmap_width // 2,
-                    center_y - pixmap_height // 2,
-                )
-                self._set_parent_geometry(
-                    top_left.x(),
-                    top_left.y(),
-                    pixmap_width,
-                    pixmap_height,
-                )
-                self.setGeometry(0, 0, parent_width, parent_height)
-                self.background_scale = [1.0, 1.0]
-
+            pixmap = pixmap.scaled(
+                scaled_width,
+                scaled_height,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
             self.background.setPixmap(pixmap)
+            self.background.setGeometry(
+                self.view_top_left_adjustment[0],
+                self.view_top_left_adjustment[1],
+                pixmap.width(),
+                pixmap.height(),
+            )
 
         except Exception as e:
             log.critical(f"Unable to load background image for view # {self.view_id}: {e}")
@@ -393,16 +381,29 @@ class ViewPanel(QWidget):
             if not fg_path.is_file():
                 raise FileNotFoundError
             fg_image = QImage(str(fg_path.resolve()))
-            image_is_xl = fg_image.width() > self.screen_rect.width() or fg_image.height() > self.screen_rect.height()
-            if self.options.DisplayType.lower() in ("maximized", "fullscreen") or image_is_xl:
-                fg_image = fg_image.scaled(
-                    self.screen_rect.width(),
-                    self.screen_rect.height(),
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                )
-            else:
-                ...
-            self.foreground_image = fg_image
+            fg_image = fg_image.scaled(
+                int(fg_image.width() * self.background_scale[0]),
+                int(fg_image.height() * self.background_scale[1]),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+
+            staged_fg = QImage(
+                self.width(),
+                self.height(),
+                QImage.Format.Format_ARGB32_Premultiplied,
+            )
+            staged_fg.fill(Qt.GlobalColor.transparent)
+
+            painter = QPainter(staged_fg)
+            painter.drawImage(
+                self.view_top_left_adjustment[0],
+                self.view_top_left_adjustment[1],
+                fg_image,
+            )
+            painter.end()
+
+            self.foreground_image = staged_fg
         except Exception as e:
             log.critical(f"Unable to load foreground image for view # {self.view_id}: {e}")
             self.fail_dialog(
@@ -510,7 +511,7 @@ class ViewPanel(QWidget):
 
         if self.dragging:
             x, y = ev.position().x(), ev.position().y()
-            x_offset, y_offset = self.view_top_left_adjustment if self.view_is_fullscreen else (0, 0)
+            x_offset, y_offset = self.view_top_left_adjustment
             g = self.frameGeometry()
             buffer = 50
 
