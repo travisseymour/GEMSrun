@@ -1543,11 +1543,13 @@ class ViewPanel(QWidget):
         duration: float = 0.0,
         click_through: bool = False,
         within: int = -1,
-        HideTarget: bool = False,
+        hide_target: bool = False,
+        stretch: bool = False,
     ):
         """
         Like ShowImage, but if Within refers to a valid object, the image is scaled and positioned to that object's
         bounds. Otherwise it falls back to Left/Top positioning. Optionally hides the target while overlaid.
+        stretch determines whether to ignore aspect ratio when fitting the target bounds.
         :scope viewobjectpocket
         :mtype action
         """
@@ -1593,18 +1595,23 @@ class ViewPanel(QWidget):
         if target:
             target_rect = target.geometry()
             target_was_visible = target.isVisible()
-            ratio = min(target_rect.width() / pixmap.width(), target_rect.height() / pixmap.height())
-            ratio = ratio if ratio > 0 else 1.0
             scaled = pixmap.scaled(
-                int(pixmap.width() * ratio),
-                int(pixmap.height() * ratio),
+                target_rect.width(),
+                target_rect.height(),
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
             image.setPixmap(scaled)
             image.setFixedSize(scaled.width(), scaled.height())
-            image.move(target_rect.topLeft())
-            if HideTarget:
+
+            if stretch:
+                # center within target bounds while keeping aspect ratio
+                offset_x = target_rect.left() + (target_rect.width() - scaled.width()) // 2
+                offset_y = target_rect.top() + (target_rect.height() - scaled.height()) // 2
+                image.move(offset_x, offset_y)
+            else:
+                image.move(target_rect.topLeft())
+            if hide_target:
                 target.hide()
                 if duration and target_was_visible:
                     QTimer.singleShot(
