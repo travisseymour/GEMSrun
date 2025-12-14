@@ -5,13 +5,27 @@
 # E.g.:
 # make build
 
-.PHONY: build clean test clean-pycache format
+.PHONY: build clean test clean-pycache format install uninstall
+
+SHELL := /usr/bin/env bash
 
 install:
-	pip install -U pip wheel
-	pip install .[dev]
-	pip uninstall gemsrun -y
-	make clean
+	@if [[ -n "$$VIRTUAL_ENV" ]]; then \
+	    echo "Installing GEMSrun dependencies into virtual environment $$VIRTUAL_ENV"; \
+	    pip install -U pip wheel; \
+	    pip install -e .[dev]; \
+	else \
+	    echo "Not in a virtual environment, install one first and then try again."; \
+	fi
+
+uninstall:
+	@if [[ -n "$$VIRTUAL_ENV" ]]; then \
+	    echo "Uninstalling GEMSrun dependencies from virtual environment $$VIRTUAL_ENV"; \
+	    pip uninstall GEMS; \
+
+	else \
+	    echo "Not in a virtual environment, nothing to uninstall."; \
+	fi
 
 format:
 	ruff check gemsrun --fix
