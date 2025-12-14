@@ -793,15 +793,17 @@ class VideoObject(QVideoWidget):
             self.player.setSource(url)
             self.player.setVideoOutput(self)
             self.player.setPosition(start)
+            self.player.mediaStatusChanged.connect(self._on_media_status_changed)
+            self.player.errorOccurred.connect(self._on_error)
 
-            # Test audio output availability
-            self.audio_output = QAudioOutput()
-            if self.audio_output.isAvailable():
+            # Attach audio output if possible; PySide6 QAudioOutput lacks isAvailable on some platforms
+            try:
+                self.audio_output = QAudioOutput()
                 self.player.setAudioOutput(self.audio_output)
                 self.audio_output.setVolume(volume * 100)
                 log.debug("Video audio output initialized successfully")
-            else:
-                log.warning("Audio output not available for video playback")
+            except Exception as e:
+                log.warning(f"Audio output not available for video playback: {e}")
                 self.fallback_mode = True
 
         except Exception as e:
@@ -851,6 +853,16 @@ class VideoObject(QVideoWidget):
                 log.error(f"Error stopping video: {e}")
         else:
             log.warning("Video player not available or in fallback mode")
+
+    def _on_media_status_changed(self, status):
+        log.debug(f"Video status changed: {status}")
+        if status == QMediaPlayer.MediaStatus.EndOfMedia:
+            self.close()
+        elif status == QMediaPlayer.MediaStatus.InvalidMedia:
+            log.warning(f"Invalid media encountered for {self.video_path}")
+
+    def _on_error(self, error, error_string=None):
+        log.error(f"Video playback error ({error}): {error_string or ''}")
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.stop()
