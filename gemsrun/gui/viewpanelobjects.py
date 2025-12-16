@@ -54,7 +54,7 @@ from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtWidgets import QLabel
 
 from gemsrun import log
-from gemsrun.gui.viewpanelutils import pixmap_to_pointer
+from gemsrun.gui.viewpanelutils import drag_pixmap_with_hand, pixmap_to_pointer
 from gemsrun.utils import gemsutils as gu
 
 if TYPE_CHECKING:  # Avoid circular import at runtime
@@ -170,14 +170,16 @@ class ViewImageObject(QLabel):
 
         drag = QDrag(self)
         drag.setMimeData(mimeData)
+        hotspot = ev.pos() - self.rect().topLeft()
         drag.setDragCursor(
-            pixmap_to_pointer(self.pixmap(), 100, 100, keep_aspect_ratio=True),
+            drag_pixmap_with_hand(self.pixmap(), hotspot),
             Qt.DropAction.MoveAction,
         )
-        # drag.setDragCursor(self.pixmap().scaled(QSize(100, 100), Qt.KeepAspectRatio), Qt.MoveAction)
-        drag.setHotSpot(ev.pos() - self.rect().topLeft())
+        drag.setHotSpot(hotspot)
+        self.setCursor(Qt.CursorShape.ClosedHandCursor)
 
         _ = drag.exec(Qt.DropAction.MoveAction)  # required
+        self._apply_cursor_after_drag()
 
         ev.accept()
 
@@ -249,6 +251,7 @@ class ViewImageObject(QLabel):
         if evt == QEvent.Type.HoverEnter:
             self.hovered = True
 
+            self._apply_hover_cursor()
             log.info(
                 dict(
                     Kind="Mouse",
@@ -269,6 +272,7 @@ class ViewImageObject(QLabel):
         elif evt == QEvent.Type.HoverLeave:
             self.hovered = False
 
+            self._apply_hover_cursor()
             log.info(
                 dict(
                     Kind="Mouse",
@@ -280,6 +284,26 @@ class ViewImageObject(QLabel):
                     ViewTime=self.parent().view_elapsed(),
                 )
             )
+
+    def _apply_hover_cursor(self):
+        # Priority: clickable -> pointing hand; draggable -> open hand; otherwise arrow
+        is_clickable = any(
+            action.Enabled and action.Trigger == "MouseClick()" for action in self.object.Actions.values()
+        )
+        if is_clickable:
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
+        elif self.object.Draggable:
+            self.setCursor(Qt.CursorShape.OpenHandCursor)
+        else:
+            self.unsetCursor()
+
+    def _apply_cursor_after_drag(self):
+        # If we're still hovering over this object, apply hover cursor rules; else clear to default
+        pos_local = self.mapFromGlobal(QCursor.pos())
+        if self.rect().contains(pos_local):
+            self._apply_hover_cursor()
+        else:
+            self.unsetCursor()
 
 
 class ViewPocketObject(QLabel):
@@ -350,13 +374,16 @@ class ViewPocketObject(QLabel):
         drag.setMimeData(mimeData)
 
         # set cursor to current pixmap which should be the pixmap of the object currently in this pocket
+        hotspot = ev.pos() - self.rect().topLeft()
         drag.setDragCursor(
-            pixmap_to_pointer(self.pixmap(), 100, 90, keep_aspect_ratio=True),
+            drag_pixmap_with_hand(self.pixmap(), hotspot),
             Qt.DropAction.MoveAction,
         )
-        drag.setHotSpot(ev.pos() - self.rect().topLeft())
+        drag.setHotSpot(hotspot)
+        self.setCursor(Qt.CursorShape.ClosedHandCursor)
 
         _ = drag.exec(Qt.DropAction.MoveAction)  # required
+        self.unsetCursor()
 
     def dragEnterEvent(self, ev: QDragEnterEvent) -> None:
         if self.isHidden():
