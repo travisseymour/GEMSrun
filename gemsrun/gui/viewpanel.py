@@ -47,6 +47,7 @@ from PySide6.QtWidgets import QInputDialog, QLabel, QMessageBox, QWidget
 
 import gemsrun
 from gemsrun import log
+from gemsrun.gui.viewpanelutils import get_custom_cursors
 from gemsrun.gui import uiutils
 from gemsrun.gui.viewpanelobjects import (
     AnimationObject,
@@ -216,6 +217,12 @@ class ViewPanel(QWidget):
         self.draw_pos = QPoint(0, 0)
 
         self.setAcceptDrops(True)  # allow drops to nothing
+        cursors = get_custom_cursors()
+        self.arrow_cursor = cursors.get("arrow")
+        if self.arrow_cursor:
+            self.setCursor(self.arrow_cursor)
+        else:
+            self.setCursor(Qt.CursorShape.ArrowCursor)
 
         screen = gemsrun.APPLICATION.primaryScreen()
         self.screen_rect = screen.availableGeometry()
