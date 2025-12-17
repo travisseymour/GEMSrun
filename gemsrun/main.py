@@ -1,4 +1,5 @@
 import optparse
+import contextlib
 from pathlib import Path
 import sys
 from typing import Optional

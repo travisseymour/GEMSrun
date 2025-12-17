@@ -333,15 +333,12 @@ class ViewPocketObject(QLabel):
         self.pocket_id: int = pocket_id
         self.pocket_image: QPixmap = QPixmap()
         self.pocket_adjust_timer: QTimer = QTimer(self)
-        self.init_pocket_image()
-        self.setAcceptDrops(True)
         cursors = get_custom_cursors()
         self.open_hand_cursor = cursors.get("open_hand")
         self.arrow_cursor = cursors.get("arrow")
-        if self.open_hand_cursor:
-            self.setCursor(self.open_hand_cursor)
-        elif self.arrow_cursor:
-            self.setCursor(self.arrow_cursor)
+        self.init_pocket_image()
+        self.setAcceptDrops(True)
+        self._apply_cursor()
 
     def init_pocket_image(self):
         if not self.object_info.image:
@@ -356,6 +353,7 @@ class ViewPocketObject(QLabel):
         # make sure pockets stay at the bottom of the view
         self.position_pockets()
         self.pocket_adjust_timer.start()
+        self._apply_cursor()
 
     def position_pockets(self):
         self.move(
@@ -405,7 +403,13 @@ class ViewPocketObject(QLabel):
         # cursor remains the default/arrow; drag icon handles the closed hand overlay
 
         _ = drag.exec(Qt.DropAction.MoveAction)  # required
-        if self.open_hand_cursor:
+        self._apply_cursor()
+
+    def _apply_cursor(self):
+        is_empty = not self.object_info or not self.object_info.name
+        if is_empty and self.arrow_cursor:
+            self.setCursor(self.arrow_cursor)
+        elif not is_empty and self.open_hand_cursor:
             self.setCursor(self.open_hand_cursor)
         elif self.arrow_cursor:
             self.setCursor(self.arrow_cursor)
