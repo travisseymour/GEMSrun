@@ -16,7 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from functools import lru_cache
 from pathlib import Path
+import re
 
 from PySide6.QtCore import QPoint, QSize, Qt
 from PySide6.QtGui import QColor, QCursor, QPainter, QPainterPath, QPen, QPixmap
@@ -45,33 +47,56 @@ def drag_pixmap_with_hand(pixmap: QPixmap, hotspot: QPoint) -> QPixmap:
     drag_pixmap = QPixmap(pixmap)
 
     painter = QPainter(drag_pixmap)
-    hand_cursor = QCursor(Qt.CursorShape.ClosedHandCursor)
-    hand_pixmap = hand_cursor.pixmap()
 
-    if hand_pixmap.isNull():
-        # try packaged fallback icon if system cursor pixmap is unavailable
-        try:
-            icon_path = Path(get_resource("images", "close_hand_icon.png"))
-            if icon_path.is_file():
-                hand_pixmap = QPixmap(str(icon_path))
-                # center the icon on the hotspot
-                hotspot_offset = QPoint(hand_pixmap.width() // 2, hand_pixmap.height() // 2)
-                dest = hotspot - hotspot_offset
-                painter.drawPixmap(dest, hand_pixmap)
-        except Exception:
-            ...
-
-    if hand_pixmap.isNull():
+    overlay = get_custom_cursors().get("closed_hand_overlay")
+    if overlay and not overlay.isNull():
+        hotspot_offset = QPoint(overlay.width() // 2, overlay.height() // 2)
+        dest = hotspot - hotspot_offset
+        painter.drawPixmap(dest, overlay)
+    else:
         # last-resort fallback: draw a small yellow circle at the hotspot
         painter.setPen(QPen(QColor("yellow"), 2))
         painter.setBrush(QColor("yellow"))
         painter.drawEllipse(hotspot, 6, 6)
-    else:
-        hand_hotspot = hand_cursor.hotSpot() if not hand_cursor.pixmap().isNull() else QPoint(
-            hand_pixmap.width() // 2, hand_pixmap.height() // 2
-        )
-        dest = hotspot - hand_hotspot
-        painter.drawPixmap(dest, hand_pixmap)
 
     painter.end()
     return drag_pixmap
+
+
+def _cursor_from_file(rel_path: str, default_shape: Qt.CursorShape) -> QCursor:
+    try:
+        path = Path(get_resource("images", rel_path))
+        if not path.is_file():
+            return QCursor(default_shape)
+        match = re.search(r"_([0-9]+)_([0-9]+)\.", path.name)
+        hx, hy = (int(match.group(1)), int(match.group(2))) if match else (0, 0)
+        pixmap = QPixmap(str(path))
+        if pixmap.isNull():
+            return QCursor(default_shape)
+        return QCursor(pixmap, hx, hy)
+    except Exception:
+        return QCursor(default_shape)
+
+
+@lru_cache
+def get_custom_cursors() -> dict:
+    """
+    Load custom cursors and overlay assets from resources/images/cursors.
+    Expected files:
+      arrow_2_3.png
+      open_hand_17_15.png
+      pointing_hand_13_9.png
+      closed_hand_cropped.png (used as overlay, not a cursor)
+    """
+    cursors = {
+        "arrow": _cursor_from_file("cursors/arrow_2_3.png", Qt.CursorShape.ArrowCursor),
+        "open_hand": _cursor_from_file("cursors/open_hand_17_15.png", Qt.CursorShape.OpenHandCursor),
+        "pointing_hand": _cursor_from_file("cursors/pointing_hand_13_9.png", Qt.CursorShape.PointingHandCursor),
+    }
+    try:
+        overlay_path = Path(get_resource("images", "cursors/closed_hand_cropped.png"))
+        overlay = QPixmap(str(overlay_path)) if overlay_path.is_file() else QPixmap()
+    except Exception:
+        overlay = QPixmap()
+    cursors["closed_hand_overlay"] = overlay
+    return cursors

@@ -54,7 +54,11 @@ from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtWidgets import QLabel
 
 from gemsrun import log
-from gemsrun.gui.viewpanelutils import drag_pixmap_with_hand, pixmap_to_pointer
+from gemsrun.gui.viewpanelutils import (
+    drag_pixmap_with_hand,
+    get_custom_cursors,
+    pixmap_to_pointer,
+)
 from gemsrun.utils import gemsutils as gu
 
 if TYPE_CHECKING:  # Avoid circular import at runtime
@@ -111,6 +115,11 @@ class ViewImageObject(QLabel):
         self.hovered = False
 
         self.setAcceptDrops(True)
+        cursors = get_custom_cursors()
+        self.arrow_cursor = cursors.get("arrow")
+        self.open_hand_cursor = cursors.get("open_hand")
+        self.pointing_cursor = cursors.get("pointing_hand")
+        self._apply_hover_cursor()
 
         style_sheet = ""
         if self.show_bounds:
@@ -176,7 +185,7 @@ class ViewImageObject(QLabel):
             Qt.DropAction.MoveAction,
         )
         drag.setHotSpot(hotspot)
-        self.setCursor(Qt.CursorShape.ClosedHandCursor)
+        self.setCursor(self.open_hand_cursor)
 
         _ = drag.exec(Qt.DropAction.MoveAction)  # required
         self._apply_cursor_after_drag()
@@ -290,10 +299,12 @@ class ViewImageObject(QLabel):
         is_clickable = any(
             action.Enabled and action.Trigger == "MouseClick()" for action in self.object.Actions.values()
         )
-        if is_clickable:
-            self.setCursor(Qt.CursorShape.PointingHandCursor)
-        elif self.object.Draggable:
-            self.setCursor(Qt.CursorShape.OpenHandCursor)
+        if is_clickable and self.pointing_cursor:
+            self.setCursor(self.pointing_cursor)
+        elif self.object.Draggable and self.open_hand_cursor:
+            self.setCursor(self.open_hand_cursor)
+        elif self.arrow_cursor:
+            self.setCursor(self.arrow_cursor)
         else:
             self.unsetCursor()
 
@@ -303,7 +314,10 @@ class ViewImageObject(QLabel):
         if self.rect().contains(pos_local):
             self._apply_hover_cursor()
         else:
-            self.unsetCursor()
+            if self.arrow_cursor:
+                self.setCursor(self.arrow_cursor)
+            else:
+                self.unsetCursor()
 
 
 class ViewPocketObject(QLabel):
@@ -330,6 +344,7 @@ class ViewPocketObject(QLabel):
         else:
             self.pocket_image = QPixmap().fromImage(self.object_info.image)
         self.setPixmap(self.pocket_image)
+        self.show()
 
         # make sure pockets stay at the bottom of the view
         self.position_pockets()
@@ -380,7 +395,7 @@ class ViewPocketObject(QLabel):
             Qt.DropAction.MoveAction,
         )
         drag.setHotSpot(hotspot)
-        self.setCursor(Qt.CursorShape.ClosedHandCursor)
+        # cursor remains the default/arrow; drag icon handles the closed hand overlay
 
         _ = drag.exec(Qt.DropAction.MoveAction)  # required
         self.unsetCursor()

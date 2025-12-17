@@ -644,6 +644,9 @@ class ViewPanel(QWidget):
             )
 
         self.parent().pocket_objects = Munch({i: ViewPocketObject(self, i) for i in range(self.options.Pocketcount)})
+        for pocket in self.parent().pocket_objects.values():
+            pocket.show()
+            pocket.raise_()
 
         log.debug("Pockets created.")
 
@@ -652,6 +655,8 @@ class ViewPanel(QWidget):
         for pocket_object in self.parent().pocket_objects.values():
             pocket_object.init_pocket_image()
             pocket_object.setParent(self)
+            pocket_object.show()
+            pocket_object.raise_()
         log.debug("Pockets reloaded.")
 
     def create_nav_pics(self):
