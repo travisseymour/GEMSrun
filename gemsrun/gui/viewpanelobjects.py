@@ -335,6 +335,13 @@ class ViewPocketObject(QLabel):
         self.pocket_adjust_timer: QTimer = QTimer(self)
         self.init_pocket_image()
         self.setAcceptDrops(True)
+        cursors = get_custom_cursors()
+        self.open_hand_cursor = cursors.get("open_hand")
+        self.arrow_cursor = cursors.get("arrow")
+        if self.open_hand_cursor:
+            self.setCursor(self.open_hand_cursor)
+        elif self.arrow_cursor:
+            self.setCursor(self.arrow_cursor)
 
     def init_pocket_image(self):
         if not self.object_info.image:
@@ -398,7 +405,10 @@ class ViewPocketObject(QLabel):
         # cursor remains the default/arrow; drag icon handles the closed hand overlay
 
         _ = drag.exec(Qt.DropAction.MoveAction)  # required
-        self.unsetCursor()
+        if self.open_hand_cursor:
+            self.setCursor(self.open_hand_cursor)
+        elif self.arrow_cursor:
+            self.setCursor(self.arrow_cursor)
 
     def dragEnterEvent(self, ev: QDragEnterEvent) -> None:
         if self.isHidden():
