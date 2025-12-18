@@ -256,6 +256,8 @@ class ViewPanel(QWidget):
 
         self.create_nav_pics()
 
+        self.reset_z_pos()
+
         self.show()
 
     def _set_parent_geometry(self, x, y, width, height):
@@ -453,6 +455,20 @@ class ViewPanel(QWidget):
             # user didn't provide one, use default one
             pocket_pic = get_resource("images", "pocket.png")
             self.pocket_bitmap = QImage(pocket_pic)
+
+        # scale pocket bitmap if it would be too large for the current stage
+        try:
+            max_pocket_w = max(50, int(self.width() * 0.25))
+            max_pocket_h = max(50, int(self.height() * 0.25))
+            if self.pocket_bitmap.width() > max_pocket_w or self.pocket_bitmap.height() > max_pocket_h:
+                self.pocket_bitmap = self.pocket_bitmap.scaled(
+                    max_pocket_w,
+                    max_pocket_h,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+        except Exception:
+            ...
 
     def reset_z_pos(self):
         # maintain relative z-pos
@@ -701,6 +717,7 @@ class ViewPanel(QWidget):
         )
         for nav_id, nav_pic in self.nav_pics.items():
             nav_pic.move(positions[nav_id])
+            nav_pic.show()
 
     def view_elapsed(self):
         return timeit.default_timer() - self.view_start_time

@@ -237,7 +237,8 @@ def get_initial_view_size(db: Munch, media_folder: Path) -> tuple:
             context=func_name(),
         )
         sz = (1024, 768)
-    return sz
+    # return sz
+    return (1920, 1080)
 
 
 def verify_media_folder(db_path: Path) -> Path:
