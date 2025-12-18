@@ -233,12 +233,11 @@ def get_initial_view_size(db: Munch, media_folder: Path) -> tuple:
         sz = get_image_dims(fg_file)
     except Exception as e:
         log.warning(
-            f"Problem getting dims of {str(fg_file)}. Defaulting to 1024x768 instead...may not lead to good results!",
+            f"Problem getting dims of {str(fg_file)}. Defaulting to 1152x864 instead...may not lead to good results!",
             context=func_name(),
         )
-        sz = (1024, 768)
-    # return sz
-    return (1920, 1080)
+        sz = (1152, 864)
+    return sz
 
 
 def verify_media_folder(db_path: Path) -> Path:
