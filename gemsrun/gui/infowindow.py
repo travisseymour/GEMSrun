@@ -76,7 +76,7 @@ class InfoDialog(QtWidgets.QDialog):
             """
         <tr>
             <td>{}</td>
-            <td>{}</td> 
+            <td>{}</td>
         </tr>
         """
         ).rstrip()

@@ -93,7 +93,7 @@ class CrossPlatformAudioPlayer(QObject):
 
         # Test QMediaPlayer availability
         try:
-            from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
+            from PySide6.QtMultimedia import QAudioOutput, QMediaDevices, QMediaPlayer
 
             # Try to create instances to test availability
             test_player = QMediaPlayer()
@@ -116,7 +116,7 @@ class CrossPlatformAudioPlayer(QObject):
 
         # Test QSoundEffect availability
         try:
-            from PySide6.QtMultimedia import QSoundEffect
+            from PySide6.QtMultimedia import QSoundEffect  # noqa: F401
 
             # test_effect = QSoundEffect()
             # QSoundEffect doesn't have isAvailable() in newer PySide6 versions

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 ################################################################################
 ## Form generated from reading UI file 'paramdialog.ui'
@@ -24,7 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 
-class Ui_paramDialog(object):
+class Ui_paramDialog:
     def setupUi(self, paramDialog):
         if not paramDialog.objectName():
             paramDialog.setObjectName("paramDialog")

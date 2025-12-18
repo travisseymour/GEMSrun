@@ -4,23 +4,26 @@ from plumbum import local
 from plumbum.colors import bold, cyan, green, red, yellow
 
 """
-This converts .ui files to .py files for PyQt6, but to keep GIT history accurate, 
+This converts .ui files to .py files for PyQt6, but to keep GIT history accurate,
 I only want to process ui files that actually changed.
 
 """
 
+qt_type = None
+
 try:
+    import PySide6
+
+    print(f"Found PySide6 v{PySide6.__version__}")
     qt_type = "pyside6"
-except Exception:
-    qt_type = ""
-
-if not qt_type:
+except ImportError:
     try:
-        qt_type = "pyqt6"
-    except:
-        qt_type = "???"
-        raise ValueError("Expecting To Find Either PySide6 or PyQt6!")
+        import PyQt6
 
+        print(f"Found PySide6 v{PyQt6.__version__}")
+        qt_type = "pyqt6"
+    except ImportError as err:
+        raise ValueError("Expecting To Find Either PySide6 or PyQt6!") from err
 
 ui_files: list[Path] = list(Path().glob("*.ui"))
 

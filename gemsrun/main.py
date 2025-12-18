@@ -1,10 +1,10 @@
 from pathlib import Path
 
-import typer
 from munch import Munch
 from PySide6.QtCore import QCoreApplication, QSettings, Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication, QMessageBox
+import typer
 
 import gemsrun
 from gemsrun.gui import mainwindow

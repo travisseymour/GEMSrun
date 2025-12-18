@@ -47,7 +47,6 @@ from PySide6.QtWidgets import QInputDialog, QLabel, QMessageBox, QWidget
 
 import gemsrun
 from gemsrun import log
-from gemsrun.gui.viewpanelutils import get_custom_cursors
 from gemsrun.gui import uiutils
 from gemsrun.gui.viewpanelobjects import (
     AnimationObject,
@@ -58,6 +57,7 @@ from gemsrun.gui.viewpanelobjects import (
     ViewImageObject,
     ViewPocketObject,
 )
+from gemsrun.gui.viewpanelutils import get_custom_cursors
 from gemsrun.utils import gemsutils as gu
 from gemsrun.utils.apputils import get_resource
 from gemsrun.utils.safestrfunc import func_str_parts, get_param, is_safe_value
@@ -992,8 +992,8 @@ class ViewPanel(QWidget):
         if source_id == target_id:
             return
 
-        Source_View_Id = self.view_id if source_view_id == -1 else source_view_id
-        source_object = self.db.Views[str(Source_View_Id)].Objects[str(source_id)]
+        _source_view_id = self.view_id if source_view_id == -1 else source_view_id
+        source_object = self.db.Views[str(_source_view_id)].Objects[str(source_id)]
         target_object = self.db.Views[str(self.view_id)].Objects[str(target_id)]
 
         trigger = f"DroppedOn({source_object.Id})"

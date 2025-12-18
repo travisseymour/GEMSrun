@@ -21,7 +21,7 @@ from pathlib import Path
 import re
 
 from PySide6.QtCore import QPoint, QSize, Qt
-from PySide6.QtGui import QColor, QCursor, QPainter, QPainterPath, QPen, QPixmap
+from PySide6.QtGui import QColor, QCursor, QPainter, QPen, QPixmap
 
 from gemsrun.utils.apputils import get_resource
 

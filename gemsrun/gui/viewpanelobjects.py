@@ -174,11 +174,11 @@ class ViewImageObject(QLabel):
         if ev.buttons() != Qt.MouseButton.LeftButton or not self.object.Draggable:
             return
 
-        mimeData = QMimeData()
-        mimeData.setText(f"{self.object.Name}|{self.parent().view_id}|{self.object.Id}")
+        mime_data = QMimeData()
+        mime_data.setText(f"{self.object.Name}|{self.parent().view_id}|{self.object.Id}")
 
         drag = QDrag(self)
-        drag.setMimeData(mimeData)
+        drag.setMimeData(mime_data)
         hotspot = ev.pos() - self.rect().topLeft()
         # scale drag image to ~95% of pocket size for easier drops
         pocket = getattr(self.parent(), "pocket_bitmap", None)
@@ -405,10 +405,10 @@ class ViewPocketObject(QLabel):
             return
 
         # create mime data to send to ViewImageObject that this pocket object is dropped on
-        mimeData = QMimeData()
-        mimeData.setText(f"{self.object_info.name}|{self.object_info.view_id}|{self.object_info.Id}")
+        mime_data = QMimeData()
+        mime_data.setText(f"{self.object_info.name}|{self.object_info.view_id}|{self.object_info.Id}")
         drag = QDrag(self)
-        drag.setMimeData(mimeData)
+        drag.setMimeData(mime_data)
 
         # set cursor to current pixmap which should be the pixmap of the object currently in this pocket
         hotspot = ev.pos() - self.rect().topLeft()
