@@ -275,6 +275,12 @@ class ViewPanel(QWidget):
     def geom_y_adjust(self, value: int | float) -> int:
         return self.view_top_left_adjustment[1] + geom_y_adjust(value, self.background_scale[1])
 
+    def geom_x_scale(self, value: int | float) -> int:
+        return geom_x_adjust(value, self.background_scale[0])
+
+    def geom_y_scale(self, value: int | float) -> int:
+        return geom_y_adjust(value, self.background_scale[1])
+
     def fail_dialog(self, caption: str, message: str):
         QMessageBox.critical(self, caption, message, QMessageBox.StandardButton.Ok)
         self.parent().close()
@@ -581,8 +587,8 @@ class ViewPanel(QWidget):
             adjusted_object_rect = QRect(
                 self.geom_x_adjust(_object.Left),
                 self.geom_y_adjust(_object.Top),
-                self.geom_x_adjust(_object.Width),
-                self.geom_y_adjust(_object.Height),
+                self.geom_x_scale(_object.Width),
+                self.geom_y_scale(_object.Height),
             )
             pixmap = QPixmap.fromImage(self.foreground_image.copy(adjusted_object_rect))
             self.object_pics[_object.Id] = ViewImageObject(
