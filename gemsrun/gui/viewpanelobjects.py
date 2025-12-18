@@ -180,11 +180,28 @@ class ViewImageObject(QLabel):
         drag = QDrag(self)
         drag.setMimeData(mimeData)
         hotspot = ev.pos() - self.rect().topLeft()
+        # scale drag image to ~95% of pocket size for easier drops
+        pocket = getattr(self.parent(), "pocket_bitmap", None)
+        base_pixmap = self.pixmap()
+        if pocket and not base_pixmap.isNull():
+            target_w = int(pocket.width() * 0.95)
+            target_h = int(pocket.height() * 0.95)
+            ratio = min(target_w / base_pixmap.width(), target_h / base_pixmap.height())
+            ratio = ratio if ratio > 0 else 1.0
+            base_pixmap = base_pixmap.scaled(
+                int(base_pixmap.width() * ratio),
+                int(base_pixmap.height() * ratio),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            hotspot = QPoint(int(hotspot.x() * ratio), int(hotspot.y() * ratio))
+
         drag.setDragCursor(
-            drag_pixmap_with_hand(self.pixmap(), hotspot),
+            drag_pixmap_with_hand(base_pixmap, hotspot),
             Qt.DropAction.MoveAction,
         )
         drag.setHotSpot(hotspot)
+        self.parent().drag_object_bitmap = base_pixmap.copy()
         self.setCursor(self.open_hand_cursor)
 
         _ = drag.exec(Qt.DropAction.MoveAction)  # required
@@ -395,12 +412,28 @@ class ViewPocketObject(QLabel):
 
         # set cursor to current pixmap which should be the pixmap of the object currently in this pocket
         hotspot = ev.pos() - self.rect().topLeft()
+        base_pixmap = self.pixmap()
+        pocket = getattr(self.parent(), "pocket_bitmap", None)
+        if pocket and not base_pixmap.isNull():
+            target_w = int(pocket.width() * 0.95)
+            target_h = int(pocket.height() * 0.95)
+            ratio = min(target_w / base_pixmap.width(), target_h / base_pixmap.height())
+            ratio = ratio if ratio > 0 else 1.0
+            base_pixmap = base_pixmap.scaled(
+                int(base_pixmap.width() * ratio),
+                int(base_pixmap.height() * ratio),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            hotspot = QPoint(int(hotspot.x() * ratio), int(hotspot.y() * ratio))
+
         drag.setDragCursor(
-            drag_pixmap_with_hand(self.pixmap(), hotspot),
+            drag_pixmap_with_hand(base_pixmap, hotspot),
             Qt.DropAction.MoveAction,
         )
         drag.setHotSpot(hotspot)
         # cursor remains the default/arrow; drag icon handles the closed hand overlay
+        self.parent().drag_object_bitmap = base_pixmap.copy()
 
         _ = drag.exec(Qt.DropAction.MoveAction)  # required
         self._apply_cursor()
