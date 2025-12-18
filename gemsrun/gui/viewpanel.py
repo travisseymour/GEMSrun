@@ -287,6 +287,20 @@ class ViewPanel(QWidget):
         QMessageBox.critical(self, caption, message, QMessageBox.StandardButton.Ok)
         self.parent().close()
 
+    def _resolve_env_asset(self, filename: str) -> Path:
+        """
+        Return a Path to an asset, preferring the current environment media folder,
+        otherwise falling back to packaged resources.
+        """
+        media_candidate = Path(self.options.MediaPath, filename)
+        if media_candidate.is_file():
+            return media_candidate.resolve()
+        try:
+            return get_resource("images", filename)
+        except Exception as e:  # pragma: no cover - catastrophic missing resource
+            log.critical(f"Missing required asset '{filename}': {e}")
+            raise
+
     def sleep(self, msec: int):
         """
         A pyqt friendly version of time.sleep()
@@ -428,14 +442,8 @@ class ViewPanel(QWidget):
             )
 
         # either load custom nav panel image from env media folder, or use default one
-        nav_panel = Path(self.options.MediaPath, "nav_panel.png")
-        if nav_panel.is_file():
-            # ok, user has provided one, use it
-            self.nav_image = QImage(str(nav_panel.resolve()))
-        else:
-            # user didn't provide one, use default one
-            nav_panel = get_resource("images", "nav_panel.png")
-            self.nav_image = QImage(nav_panel)
+        nav_panel = self._resolve_env_asset("nav_panel.png")
+        self.nav_image = QImage(str(nav_panel))
 
         if result := uiutils.create_nav_pics(
             nav_panel_image=self.nav_image,
@@ -447,14 +455,8 @@ class ViewPanel(QWidget):
             self.fail_dialog("Problem Generating Nav Images From Panel", result)
 
         # either load custom pocket image from env media folder, or use default one
-        pocket_pic = Path(self.options.MediaPath, "pocket.png")
-        if pocket_pic.is_file():
-            # ok, user has provided one, use it
-            self.pocket_bitmap = QImage(str(pocket_pic.resolve()))
-        else:
-            # user didn't provide one, use default one
-            pocket_pic = get_resource("images", "pocket.png")
-            self.pocket_bitmap = QImage(pocket_pic)
+        pocket_pic = self._resolve_env_asset("pocket.png")
+        self.pocket_bitmap = QImage(str(pocket_pic))
 
         # scale pocket bitmap if it would be too large for the current stage
         try:
