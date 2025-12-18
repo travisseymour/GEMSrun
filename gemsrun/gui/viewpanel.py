@@ -206,7 +206,7 @@ class ViewPanel(QWidget):
         self.video_controls = {}  # indexed by filename stem
         self.text_boxes = {}  # indexed by hash
 
-        self.nav_extent: int = 30
+        self.nav_extent: int = 40
 
         self.hover_object = None
 
