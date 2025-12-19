@@ -23,6 +23,7 @@ import re
 from PySide6.QtCore import QPoint, QSize, Qt
 from PySide6.QtGui import QColor, QCursor, QPainter, QPen, QPixmap
 
+import gemsrun
 from gemsrun.utils.apputils import get_resource
 
 
@@ -58,6 +59,19 @@ def drag_pixmap_with_hand(pixmap: QPixmap, hotspot: QPoint) -> QPixmap:
         painter.setPen(QPen(QColor("yellow"), 2))
         painter.setBrush(QColor("yellow"))
         painter.drawEllipse(hotspot, 6, 6)
+
+    try:
+        show_hotspot = bool(
+            getattr(gemsrun, "SETTINGS", None)
+            and gemsrun.SETTINGS.value("debug", defaultValue=False, type=bool)
+        )
+    except Exception:
+        show_hotspot = False
+
+    if show_hotspot:
+        painter.setPen(QPen(QColor("red"), 2))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawEllipse(hotspot, 4, 4)
 
     painter.end()
     return drag_pixmap

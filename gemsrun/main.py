@@ -16,7 +16,6 @@ from gemsrun.session import sessionsetup as ssetup
 
 app = typer.Typer(add_completion=False, help="GEMSrun command line interface.")
 
-
 @app.command()
 def run(
     env_path: str | None = typer.Argument(
@@ -79,7 +78,6 @@ def run(
             ),
         }
     )
-
     session: Munch | None = None
 
     if skipgui:
@@ -114,6 +112,7 @@ def run(
             )
             raise typer.Exit(code=1)
 
+        settings.setValue("debug", args.debug)
         session = ssetup.setup_session(args=cli_only_args)
     else:
         param_window = ParamDialog(args)
