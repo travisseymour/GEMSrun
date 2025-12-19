@@ -131,9 +131,6 @@ class ViewImageObject(QLabel):
             self.setStyleSheet(style_sheet)
             log.debug(f"{style_sheet=}")
 
-        if "Cursor" in self.db.Global.Options.ObjectHover:
-            self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-
     def paintEvent(self, event):
         super().paintEvent(event)
         painter = QPainter(self)
