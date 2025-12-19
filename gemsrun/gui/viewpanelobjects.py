@@ -115,11 +115,19 @@ class ViewImageObject(QLabel):
         self.hovered = False
 
         self.setAcceptDrops(True)
-        cursors = get_custom_cursors()
-        self.arrow_cursor = cursors.get("arrow")
-        self.open_hand_cursor = cursors.get("open_hand")
-        self.pointing_cursor = cursors.get("pointing_hand")
-        self._apply_hover_cursor()
+
+        # Cursor behavior is opt-in via Global.Options.ObjectHover containing "Cursor"
+        self.cursors_enabled = "Cursor" in self.db.Global.Options.ObjectHover
+        if self.cursors_enabled:
+            cursors = get_custom_cursors()
+            self.arrow_cursor = cursors.get("arrow")
+            self.open_hand_cursor = cursors.get("open_hand")
+            self.pointing_cursor = cursors.get("pointing_hand")
+            self._apply_hover_cursor()
+        else:
+            self.arrow_cursor = None
+            self.open_hand_cursor = None
+            self.pointing_cursor = None
 
         style_sheet = ""
         if self.show_bounds:
@@ -199,7 +207,8 @@ class ViewImageObject(QLabel):
         )
         drag.setHotSpot(hotspot)
         self.parent().drag_object_bitmap = base_pixmap.copy()
-        self.setCursor(self.open_hand_cursor)
+        if self.cursors_enabled and self.open_hand_cursor:
+            self.setCursor(self.open_hand_cursor)
 
         _ = drag.exec(Qt.DropAction.MoveAction)  # required
         self._apply_cursor_after_drag()
@@ -310,6 +319,8 @@ class ViewImageObject(QLabel):
 
     def _apply_hover_cursor(self):
         # Priority: clickable -> pointing hand; draggable -> open hand; otherwise arrow
+        if not self.cursors_enabled:
+            return
         is_clickable = any(
             action.Enabled and action.Trigger == "MouseClick()" for action in self.object.Actions.values()
         )
@@ -328,7 +339,7 @@ class ViewImageObject(QLabel):
         if self.rect().contains(pos_local):
             self._apply_hover_cursor()
         else:
-            if self.arrow_cursor:
+            if self.cursors_enabled and self.arrow_cursor:
                 self.setCursor(self.arrow_cursor)
             else:
                 self.unsetCursor()
