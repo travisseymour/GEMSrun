@@ -182,6 +182,10 @@ def geom_y_adjust(value: int | float, scale_y: float) -> int:
 
 
 class ViewPanel(QWidget):
+    _nav_panel_cache: dict[str, QImage] = {}
+    _nav_generation_cache: set[tuple[str, int, int, int]] = set()
+    _pocket_bitmap_cache: dict[tuple[str, int, int], QImage] = {}
+
     def __init__(self, parent: MainWin, view_id: int):
         super().__init__(parent=parent)
 
@@ -313,6 +317,40 @@ class ViewPanel(QWidget):
         QTimer.singleShot(msec, self, self.sleep_event_loop.quit)
         self.sleep_event_loop.exec()
 
+    @classmethod
+    def _nav_cache_key(cls, nav_panel: Path, width: int, height: int, nav_extent: int) -> tuple[str, int, int, int]:
+        return (str(nav_panel.resolve()), width, height, nav_extent)
+
+    @classmethod
+    def _get_nav_panel_image(cls, nav_panel: Path) -> QImage:
+        key = str(nav_panel.resolve())
+        if key not in cls._nav_panel_cache:
+            cls._nav_panel_cache[key] = QImage(str(nav_panel))
+        return cls._nav_panel_cache[key]
+
+    @classmethod
+    def _get_pocket_bitmap(cls, pocket_pic: Path, stage_width: int, stage_height: int) -> QImage:
+        cache_key = (str(pocket_pic.resolve()), stage_width, stage_height)
+        if cache_key in cls._pocket_bitmap_cache:
+            return cls._pocket_bitmap_cache[cache_key]
+
+        pocket_bitmap = QImage(str(pocket_pic))
+        try:
+            max_pocket_w = max(50, int(stage_width * 0.25))
+            max_pocket_h = max(50, int(stage_height * 0.25))
+            if pocket_bitmap.width() > max_pocket_w or pocket_bitmap.height() > max_pocket_h:
+                pocket_bitmap = pocket_bitmap.scaled(
+                    max_pocket_w,
+                    max_pocket_h,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+        except Exception:
+            ...
+
+        cls._pocket_bitmap_cache[cache_key] = pocket_bitmap
+        return pocket_bitmap
+
     def init_ui(self):
         # color the stage using the value in options
         self.setStyleSheet("{background:black}")
@@ -443,34 +481,30 @@ class ViewPanel(QWidget):
 
         # either load custom nav panel image from env media folder, or use default one
         nav_panel = self._resolve_env_asset("nav_panel.png")
-        self.nav_image = QImage(str(nav_panel))
+        self.nav_image = self._get_nav_panel_image(nav_panel)
 
-        if result := uiutils.create_nav_pics(
-            nav_panel_image=self.nav_image,
-            temp_folder=self.options.TempFolder,
-            view_width=self.width(),
-            view_height=self.height(),
+        nav_cache_key = self._nav_cache_key(
+            nav_panel=nav_panel,
+            width=self.width(),
+            height=self.height(),
             nav_extent=self.nav_extent,
-        ):
-            self.fail_dialog("Problem Generating Nav Images From Panel", result)
+        )
+
+        if nav_cache_key not in self._nav_generation_cache:
+            if result := uiutils.create_nav_pics(
+                nav_panel_image=self.nav_image,
+                temp_folder=self.options.TempFolder,
+                view_width=self.width(),
+                view_height=self.height(),
+                nav_extent=self.nav_extent,
+            ):
+                self.fail_dialog("Problem Generating Nav Images From Panel", result)
+            else:
+                self._nav_generation_cache.add(nav_cache_key)
 
         # either load custom pocket image from env media folder, or use default one
         pocket_pic = self._resolve_env_asset("pocket.png")
-        self.pocket_bitmap = QImage(str(pocket_pic))
-
-        # scale pocket bitmap if it would be too large for the current stage
-        try:
-            max_pocket_w = max(50, int(self.width() * 0.25))
-            max_pocket_h = max(50, int(self.height() * 0.25))
-            if self.pocket_bitmap.width() > max_pocket_w or self.pocket_bitmap.height() > max_pocket_h:
-                self.pocket_bitmap = self.pocket_bitmap.scaled(
-                    max_pocket_w,
-                    max_pocket_h,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-        except Exception:
-            ...
+        self.pocket_bitmap = self._get_pocket_bitmap(pocket_pic, self.width(), self.height())
 
     def reset_z_pos(self):
         # maintain relative z-pos
@@ -496,37 +530,43 @@ class ViewPanel(QWidget):
         Draws both global and view-specific overlay images.
         Overlays are drawn from the upper right corner. There is currently no way to really position them.
         """
-        for overlay_file in (self.View.Overlay, self.db.Global.Options.Globaloverlay):
-            if overlay_file:
-                for _object in self.View.Objects.values():
-                    try:
-                        overlay_path = Path(self.options.MediaPath, overlay_file).resolve()
-                        # overlay = QPixmap().fromImage(QImage(str(overlay_path)))
-                        overlay = QPixmap(str(overlay_path))
-                        x_ratio, y_ratio = self.background_scale
-                        overlay = overlay.scaled(
-                            int(overlay.width() * x_ratio),
-                            int(overlay.height() * y_ratio),
-                            Qt.AspectRatioMode.KeepAspectRatio,
-                        )
-                        label = QLabel(self)
-                        label.setPixmap(overlay)
+        overlay_files = (self.View.Overlay, self.db.Global.Options.Globaloverlay)
+        for overlay_file in overlay_files:
+            if not overlay_file:
+                continue
 
-                        overlay_rect = QRect(
-                            self.width() - overlay.width(),
-                            0,
-                            overlay.width(),
-                            overlay.height(),
-                        )
+            overlay_stem = Path(overlay_file).stem
+            if overlay_stem in self.overlay_pics:
+                # Avoid recreating the same overlay multiple times (can be triggered by repeated calls).
+                continue
 
-                        style_sheet = "QLabel{ " + "background-color: rgba(0,0,0,0%); }"
-                        # handle image transparency
-                        label.setStyleSheet(style_sheet)
+            try:
+                overlay_path = Path(self.options.MediaPath, overlay_file).resolve()
+                overlay = QPixmap(str(overlay_path))
+                x_ratio, y_ratio = self.background_scale
+                overlay = overlay.scaled(
+                    int(overlay.width() * x_ratio),
+                    int(overlay.height() * y_ratio),
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                )
+                label = QLabel(self)
+                label.setPixmap(overlay)
 
-                        label.setGeometry(overlay_rect)
-                        self.overlay_pics[Path(overlay_file).stem] = label
-                    except Exception as e:
-                        log.error(f"Unable to load overlay image {overlay_file}: {e}")
+                overlay_rect = QRect(
+                    self.width() - overlay.width(),
+                    0,
+                    overlay.width(),
+                    overlay.height(),
+                )
+
+                style_sheet = "QLabel{ " + "background-color: rgba(0,0,0,0%); }"
+                # handle image transparency
+                label.setStyleSheet(style_sheet)
+
+                label.setGeometry(overlay_rect)
+                self.overlay_pics[overlay_stem] = label
+            except Exception as e:
+                log.error(f"Unable to load overlay image {overlay_file}: {e}")
 
     # def eventFilter(self, watched, event):
     #     if event.type() == QEvent.MouseMove:
