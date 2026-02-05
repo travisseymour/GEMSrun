@@ -1,3 +1,7 @@
+import itertools
+import sys
+import threading
+import time
 from pathlib import Path
 
 from munch import Munch
@@ -10,11 +14,67 @@ import gemsrun
 from gemsrun.gui import mainwindow
 from gemsrun.gui.parawindow import ParamDialog
 from gemsrun.session import sessionsetup as ssetup
+from gemsrun.utils import audiocache
 
 # Avoid forcing QT multimedia backend. Let Qt auto-detect best available plugins.
 # If users need to override, they can set QT_MEDIA_BACKEND in their environment before launch.
 
 app = typer.Typer(add_completion=False, help="GEMSrun command line interface.")
+
+
+def _preload_audio_with_spinner(db: Munch):
+    """Preload all compressed audio files with a CLI spinner."""
+    from gemsrun import log
+
+    log.debug("=== APP-START AUDIO CACHE: Beginning pre-application audio caching ===")
+    media_path = db.Global.Options.MediaPath
+    audio_files = audiocache.find_playsound_files_in_database(db, media_path)
+
+    if not audio_files:
+        log.debug("=== APP-START AUDIO CACHE: No compressed audio files found to cache ===")
+        return
+
+    log.debug(f"=== APP-START AUDIO CACHE: Found {len(audio_files)} compressed audio file(s) to cache ===")
+
+    # Spinner animation
+    spinner = itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'])
+    done = False
+    current_file = [""]
+    progress = [0, len(audio_files)]
+
+    def spin():
+        while not done:
+            sys.stdout.write(f"\r{next(spinner)} Loading audio [{progress[0]}/{progress[1]}]: {current_file[0][:50]:<50}")
+            sys.stdout.flush()
+            time.sleep(0.1)
+
+    spinner_thread = threading.Thread(target=spin, daemon=True)
+    spinner_thread.start()
+
+    def update_progress(current: int, total: int, filename: str):
+        progress[0] = current
+        progress[1] = total
+        current_file[0] = filename
+
+    audiocache.preload_audio_files(audio_files, progress_callback=update_progress)
+
+    done = True
+    spinner_thread.join(timeout=0.2)
+    sys.stdout.write("\r" + " " * 80 + "\r")  # Clear the line
+    sys.stdout.flush()
+    print(f"✓ Loaded {len(audio_files)} audio file(s) into cache")
+    log.debug(f"=== APP-START AUDIO CACHE: Completed caching {len(audio_files)} audio file(s) ===")
+
+
+def _handle_clear_cache():
+    """Handle the clear-cache command separately."""
+    if audiocache.clear_cache():
+        print(f"✓ Audio cache cleared: {audiocache.CACHE_FOLDER}")
+        sys.exit(0)
+    else:
+        print("✗ Failed to clear audio cache")
+        sys.exit(1)
+
 
 @app.command()
 def run(
@@ -137,6 +197,10 @@ def run(
     if args.fullscreen:
         session.database.Global.Options.DisplayType = "fullscreen"
 
+    # Preload compressed audio at app start if Preloadresources is enabled
+    if session.database.Global.Options.Preloadresources:
+        _preload_audio_with_spinner(session.database)
+
     main_win = mainwindow.MainWin(db=session.database)
 
     if session.database.Global.Options.DisplayType.lower() == "fullscreen":
@@ -152,7 +216,11 @@ def run(
 
 
 def main():
-    app(prog_name="GEMSrun")
+    # Handle clear-cache command separately to keep 'run' as default
+    if len(sys.argv) > 1 and sys.argv[1] == "clear-cache":
+        _handle_clear_cache()
+    else:
+        app(prog_name="GEMSrun")
 
 
 if __name__ == "__main__":

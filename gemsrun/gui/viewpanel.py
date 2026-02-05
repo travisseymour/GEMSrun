@@ -48,6 +48,7 @@ from PySide6.QtWidgets import QInputDialog, QLabel, QMessageBox, QWidget
 import gemsrun
 from gemsrun import log
 from gemsrun.gui import uiutils
+from gemsrun.utils import audiocache
 from gemsrun.gui.viewpanelobjects import (
     AnimationObject,
     ExternalImageObject,
@@ -242,6 +243,11 @@ class ViewPanel(QWidget):
 
         self.init_ui()
 
+        # Preload compressed audio for this view if Preloadresources is False
+        # (If True, audio was already preloaded at app start)
+        if not self.options.Preloadresources:
+            self._preload_view_audio_with_overlay()
+
         self.view_start_time: float = timeit.default_timer()
         self.key_buffer: str = ""
 
@@ -275,6 +281,72 @@ class ViewPanel(QWidget):
             QTimer.singleShot(500, self, apply_geometry)
         else:
             apply_geometry()
+
+    def _preload_view_audio_with_overlay(self):
+        """Preload compressed audio files for this view with a loading overlay."""
+        from PySide6.QtCore import QCoreApplication
+        from PySide6.QtWidgets import QFrame
+
+        log.debug(f"=== VIEW-START AUDIO CACHE: Beginning pre-view audio caching for view {self.view_id} ===")
+
+        # Find audio files for this view
+        audio_files = audiocache.find_playsound_files_for_view(
+            self.db, self.view_id, self.options.MediaPath
+        )
+
+        if not audio_files:
+            log.debug(f"=== VIEW-START AUDIO CACHE: No compressed audio files found for view {self.view_id} ===")
+            return  # Nothing to preload
+
+        log.debug(f"=== VIEW-START AUDIO CACHE: Found {len(audio_files)} compressed audio file(s) for view {self.view_id} ===")
+
+        # Parse StageColor from options (format: "['Black',0,0,0,255]" or similar)
+        stage_color = "black"
+        try:
+            if hasattr(self.options, 'StageColor') and self.options.StageColor:
+                # StageColor format: "['ColorName',r,g,b,a]"
+                import ast
+                color_data = ast.literal_eval(self.options.StageColor)
+                if len(color_data) >= 4:
+                    r, g, b = color_data[1], color_data[2], color_data[3]
+                    stage_color = f"rgb({r},{g},{b})"
+        except Exception:
+            pass  # Use default black
+
+        # Create loading overlay
+        overlay = QFrame(self)
+        overlay.setStyleSheet(f"background-color: {stage_color};")
+        overlay.setGeometry(0, 0, self.width() or 800, self.height() or 600)
+
+        # Create loading label (black text on silver background)
+        loading_label = QLabel("Loading...", overlay)
+        loading_label.setStyleSheet(
+            "background-color: rgb(192, 192, 192); "
+            "color: black; "
+            "padding: 10px 20px; "
+            "font-size: 16px; "
+            "font-weight: bold;"
+        )
+        loading_label.move(10, 10)
+        loading_label.adjustSize()
+
+        overlay.show()
+        overlay.raise_()
+        QCoreApplication.processEvents()
+
+        # Preload each audio file
+        for i, file_path in enumerate(audio_files):
+            loading_label.setText(f"Loading audio ({i + 1}/{len(audio_files)})...")
+            loading_label.adjustSize()
+            QCoreApplication.processEvents()
+
+            audiocache.ensure_cached(file_path)
+
+        # Remove overlay
+        overlay.hide()
+        overlay.deleteLater()
+
+        log.debug(f"=== VIEW-START AUDIO CACHE: Completed caching {len(audio_files)} audio file(s) for view {self.view_id} ===")
 
     def geom_x_adjust(self, value: int | float) -> int:
         return self.view_top_left_adjustment[0] + geom_x_adjust(value, self.background_scale[0])
@@ -829,9 +901,18 @@ class ViewPanel(QWidget):
             self.sound_controls[sound_name].play()
             return
 
+        # Check cache for pre-converted WAV version of compressed audio
+        playback_path = audiocache.get_playback_path(sound_path)
+
+        # Log whether playing from cache or original
+        if playback_path != sound_path:
+            log.debug(f">>> AUDIO PLAYBACK: Playing from CACHE: {playback_path.name} (original: {sound_path.name})")
+        else:
+            log.debug(f">>> AUDIO PLAYBACK: Playing from MEDIA FOLDER: {sound_path.name}")
+
         try:
             player = SoundPlayer(
-                sound_file=str(Path(sound_path).absolute()),
+                sound_file=str(playback_path.absolute()),
                 volume=self.options.Volume * volume * 100,
                 loop=loop,
             )
