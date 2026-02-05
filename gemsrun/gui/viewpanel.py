@@ -48,7 +48,6 @@ from PySide6.QtWidgets import QInputDialog, QLabel, QMessageBox, QWidget
 import gemsrun
 from gemsrun import log
 from gemsrun.gui import uiutils
-from gemsrun.utils import audiocache
 from gemsrun.gui.viewpanelobjects import (
     AnimationObject,
     ExternalImageObject,
@@ -59,7 +58,7 @@ from gemsrun.gui.viewpanelobjects import (
     ViewPocketObject,
 )
 from gemsrun.gui.viewpanelutils import get_custom_cursors
-from gemsrun.utils import gemsutils as gu
+from gemsrun.utils import audiocache, gemsutils as gu
 from gemsrun.utils.apputils import get_resource
 from gemsrun.utils.safestrfunc import func_str_parts, get_param, is_safe_value
 
@@ -290,22 +289,23 @@ class ViewPanel(QWidget):
         log.debug(f"=== VIEW-START AUDIO CACHE: Beginning pre-view audio caching for view {self.view_id} ===")
 
         # Find audio files for this view
-        audio_files = audiocache.find_playsound_files_for_view(
-            self.db, self.view_id, self.options.MediaPath
-        )
+        audio_files = audiocache.find_playsound_files_for_view(self.db, self.view_id, self.options.MediaPath)
 
         if not audio_files:
             log.debug(f"=== VIEW-START AUDIO CACHE: No compressed audio files found for view {self.view_id} ===")
             return  # Nothing to preload
 
-        log.debug(f"=== VIEW-START AUDIO CACHE: Found {len(audio_files)} compressed audio file(s) for view {self.view_id} ===")
+        log.debug(
+            f"=== VIEW-START AUDIO CACHE: Found {len(audio_files)} compressed audio file(s) for view {self.view_id} ==="
+        )
 
         # Parse StageColor from options (format: "['Black',0,0,0,255]" or similar)
         stage_color = "black"
         try:
-            if hasattr(self.options, 'StageColor') and self.options.StageColor:
+            if hasattr(self.options, "StageColor") and self.options.StageColor:
                 # StageColor format: "['ColorName',r,g,b,a]"
                 import ast
+
                 color_data = ast.literal_eval(self.options.StageColor)
                 if len(color_data) >= 4:
                     r, g, b = color_data[1], color_data[2], color_data[3]
@@ -346,7 +346,9 @@ class ViewPanel(QWidget):
         overlay.hide()
         overlay.deleteLater()
 
-        log.debug(f"=== VIEW-START AUDIO CACHE: Completed caching {len(audio_files)} audio file(s) for view {self.view_id} ===")
+        log.debug(
+            f"=== VIEW-START AUDIO CACHE: Completed caching {len(audio_files)} audio file(s) for view {self.view_id} ==="
+        )
 
     def geom_x_adjust(self, value: int | float) -> int:
         return self.view_top_left_adjustment[0] + geom_x_adjust(value, self.background_scale[0])

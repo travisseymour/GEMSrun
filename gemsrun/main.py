@@ -1,8 +1,8 @@
 import itertools
+from pathlib import Path
 import sys
 import threading
 import time
-from pathlib import Path
 
 from munch import Munch
 from PySide6.QtCore import QCoreApplication, QSettings, Qt
@@ -37,14 +37,16 @@ def _preload_audio_with_spinner(db: Munch):
     log.debug(f"=== APP-START AUDIO CACHE: Found {len(audio_files)} compressed audio file(s) to cache ===")
 
     # Spinner animation
-    spinner = itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'])
+    spinner = itertools.cycle(["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
     done = False
     current_file = [""]
     progress = [0, len(audio_files)]
 
     def spin():
         while not done:
-            sys.stdout.write(f"\r{next(spinner)} Loading audio [{progress[0]}/{progress[1]}]: {current_file[0][:50]:<50}")
+            sys.stdout.write(
+                f"\r{next(spinner)} Loading audio [{progress[0]}/{progress[1]}]: {current_file[0][:50]:<50}"
+            )
             sys.stdout.flush()
             time.sleep(0.1)
 
@@ -86,9 +88,7 @@ def run(
     ),
     fname: str | None = typer.Option(None, "--file", "-f", help="Specify your gems environment filename."),
     user: str | None = typer.Option(None, "--user", "-u", help="Specify user ID string."),
-    skipdata: bool | None = typer.Option(
-        None, "--skipdata/--no-skipdata", "-s", help="Suppress the output data file."
-    ),
+    skipdata: bool | None = typer.Option(None, "--skipdata/--no-skipdata", "-s", help="Suppress the output data file."),
     overwrite: bool | None = typer.Option(
         None, "--overwrite/--no-overwrite", "-o", help="Enable overwriting of duplicate output data."
     ),
@@ -120,9 +120,7 @@ def run(
     args = Munch(
         {
             "fname": cli_fname if cli_fname else settings.value("fname", defaultValue="", type=str),
-            "user": (
-                cli_user if cli_user is not None else settings.value("user", defaultValue="User1", type=str)
-            ),
+            "user": (cli_user if cli_user is not None else settings.value("user", defaultValue="User1", type=str)),
             "skipdata": (
                 skipdata if skipdata is not None else settings.value("skipdata", defaultValue=False, type=bool)
             ),

@@ -51,7 +51,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest>=8.3.5,<9.0.0",
-  "black>=25.1.0,<26.0.0",
   "ruff>=0.11.6,<1.0.0",
   "build>=1.2.2.post1,<2.0.0",
   "plumbum>=1.9.0,<2.0.0",
@@ -71,9 +70,6 @@ include = ["gemsrun*"]
 # pull in any files in the resources folder for use with importlib.resources
 [tool.setuptools]
 include-package-data = true
-
-[tool.black]
-line-length = 120
 
 # ==========================
 # Ruff configuration
@@ -106,6 +102,8 @@ ignore = [
   "F841",  # assigned but unused variable
   "E722",  # bare except
   "N802",  # function name should be lowercase (trips too often with PySide)
+  "N815",  # mixedCase variable in class scope (Qt signals use camelCase)
+  "N999",  # invalid module name
 ]
 
 # Things you want reported but not auto-fixed:
@@ -149,7 +147,7 @@ exclude = [
 
 # If you use a local venv:
 venvPath = "/home/nogard/GLOBALVENVS/"
-venv = "GEMSrun"
+venv = "gemsrun"
 
 # Avoid going crazy over unknown 3rd-party types:
 # reportMissingTypeStubs = "warning"

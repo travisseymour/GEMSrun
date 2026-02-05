@@ -62,8 +62,7 @@ def drag_pixmap_with_hand(pixmap: QPixmap, hotspot: QPoint) -> QPixmap:
 
     try:
         show_hotspot = bool(
-            getattr(gemsrun, "SETTINGS", None)
-            and gemsrun.SETTINGS.value("debug", defaultValue=False, type=bool)
+            getattr(gemsrun, "SETTINGS", None) and gemsrun.SETTINGS.value("debug", defaultValue=False, type=bool)
         )
     except Exception:
         show_hotspot = False

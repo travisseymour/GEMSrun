@@ -16,13 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from collections.abc import Callable
 import os
+from pathlib import Path
 import re
 import shutil
-import struct
 import wave
-from pathlib import Path
-from typing import Callable
 
 from munch import Munch
 
@@ -108,7 +107,7 @@ def convert_to_wav(source_path: str | Path, dest_path: str | Path) -> bool:
 
         # Write to WAV file
         dest_path.parent.mkdir(parents=True, exist_ok=True)
-        with wave.open(str(dest_path), 'wb') as wav_file:
+        with wave.open(str(dest_path), "wb") as wav_file:
             wav_file.setnchannels(channels)
             wav_file.setsampwidth(sample_width)
             wav_file.setframerate(frequency)
@@ -189,7 +188,7 @@ def find_playsound_files_in_database(db: Munch, media_path: str | Path) -> list[
     def extract_sound_files_from_actions(actions: dict):
         """Extract sound files from a dictionary of actions."""
         for action in actions.values():
-            if hasattr(action, 'Action') and 'PlaySound' in str(action.Action):
+            if hasattr(action, "Action") and "PlaySound" in str(action.Action):
                 match = playsound_pattern.search(str(action.Action))
                 if match:
                     filename = match.group(1)
@@ -199,24 +198,24 @@ def find_playsound_files_in_database(db: Munch, media_path: str | Path) -> list[
                         sound_files.add(file_path)
 
     # Check global actions
-    if hasattr(db, 'Global') and hasattr(db.Global, 'GlobalActions'):
+    if hasattr(db, "Global") and hasattr(db.Global, "GlobalActions"):
         extract_sound_files_from_actions(db.Global.GlobalActions)
 
     # Check pocket actions
-    if hasattr(db, 'Global') and hasattr(db.Global, 'PocketActions'):
+    if hasattr(db, "Global") and hasattr(db.Global, "PocketActions"):
         extract_sound_files_from_actions(db.Global.PocketActions)
 
     # Check all views
-    if hasattr(db, 'Views'):
+    if hasattr(db, "Views"):
         for view in db.Views.values():
             # View-level actions
-            if hasattr(view, 'Actions'):
+            if hasattr(view, "Actions"):
                 extract_sound_files_from_actions(view.Actions)
 
             # Object-level actions within the view
-            if hasattr(view, 'Objects'):
+            if hasattr(view, "Objects"):
                 for obj in view.Objects.values():
-                    if hasattr(obj, 'Actions'):
+                    if hasattr(obj, "Actions"):
                         extract_sound_files_from_actions(obj.Actions)
 
     return sorted(sound_files)
@@ -235,7 +234,7 @@ def find_playsound_files_for_view(db: Munch, view_id: int | str, media_path: str
 
     def extract_sound_files_from_actions(actions: dict):
         for action in actions.values():
-            if hasattr(action, 'Action') and 'PlaySound' in str(action.Action):
+            if hasattr(action, "Action") and "PlaySound" in str(action.Action):
                 match = playsound_pattern.search(str(action.Action))
                 if match:
                     filename = match.group(1)
@@ -244,26 +243,23 @@ def find_playsound_files_for_view(db: Munch, view_id: int | str, media_path: str
                         sound_files.add(file_path)
 
     view_key = str(view_id)
-    if hasattr(db, 'Views') and view_key in db.Views:
+    if hasattr(db, "Views") and view_key in db.Views:
         view = db.Views[view_key]
 
         # View-level actions
-        if hasattr(view, 'Actions'):
+        if hasattr(view, "Actions"):
             extract_sound_files_from_actions(view.Actions)
 
         # Object-level actions
-        if hasattr(view, 'Objects'):
+        if hasattr(view, "Objects"):
             for obj in view.Objects.values():
-                if hasattr(obj, 'Actions'):
+                if hasattr(obj, "Actions"):
                     extract_sound_files_from_actions(obj.Actions)
 
     return sorted(sound_files)
 
 
-def preload_audio_files(
-    files: list[Path],
-    progress_callback: Callable[[int, int, str], None] | None = None
-) -> int:
+def preload_audio_files(files: list[Path], progress_callback: Callable[[int, int, str], None] | None = None) -> int:
     """
     Preload a list of audio files by converting them to cached WAV files.
 

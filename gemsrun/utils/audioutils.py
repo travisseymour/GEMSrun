@@ -18,8 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import atexit
 import os
-import threading
 from pathlib import Path
+import threading
 from typing import Any
 
 # Suppress pygame welcome message before importing

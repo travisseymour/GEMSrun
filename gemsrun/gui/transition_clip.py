@@ -22,13 +22,13 @@ Performance notes:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections import OrderedDict
-from typing import Callable, Optional, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
+from functools import partial
 
-from PySide6.QtCore import QObject, Signal, QTimer, Qt, QSize
-from PySide6.QtGui import QPixmap, QImage, QPainter
-
+from PySide6.QtCore import QObject, QSize, Qt, QTimer, Signal
+from PySide6.QtGui import QImage, QPainter, QPixmap
 
 _SUPPORTED = {"dissolve", "wipe-left", "wipe-right"}
 
@@ -314,11 +314,11 @@ class TransitionFactory:
         n = _frame_count(duration_ms, fps)
 
         if transition == "dissolve":
-            renderer: Callable[[float], QImage] = lambda t: _render_dissolve(before_img, after_img, t)
+            renderer: Callable[[float], QImage] = partial(_render_dissolve, before_img, after_img)
         elif transition == "wipe-left":
-            renderer = lambda t: _render_wipe(before_img, after_img, t, direction="left")
+            renderer = partial(_render_wipe, before_img, after_img, direction="left")
         else:  # "wipe-right"
-            renderer = lambda t: _render_wipe(before_img, after_img, t, direction="right")
+            renderer = partial(_render_wipe, before_img, after_img, direction="right")
 
         frames: list[QPixmap] = []
         for i in range(n):
@@ -346,7 +346,8 @@ def make_transition(before: QPixmap, after: QPixmap, transition: str, duration: 
 
 if __name__ == "__main__":
     import sys
-    from PySide6.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout, QPushButton, QHBoxLayout
+
+    from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
     app = QApplication(sys.argv)
 
