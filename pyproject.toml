@@ -39,8 +39,9 @@ dependencies = [
   "regex>=2025.11.3,<2026.0.0",
   "platformdirs>=4.3.7,<5.0.0",
   "munch>=4.0.0,<5.0.0",
+  "playsound3>=3.0.0,<4.0.0",
   "typer>=0.12.5,<1.0.0",
-  "rpaudio>=0.0.18,<1.0.0"
+  "pygame>=2.0.0,<3.0.0"
 ]
 
 [project.urls]
