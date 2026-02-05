@@ -245,7 +245,8 @@ class ViewPanel(QWidget):
         self.view_start_time: float = timeit.default_timer()
         self.key_buffer: str = ""
 
-        self.start_timers()
+        # Defer start_timers to allow GUI to render first
+        QTimer.singleShot(0, self.start_timers)
 
         # Z-Order = bg, object, external, pocket, overlay, nav
 
@@ -1819,11 +1820,11 @@ class ViewPanel(QWidget):
         log.info(dict(Kind='Action', Type='StopAllSounds', View=self.View.Name, **gu.func_params(), Target=None,
                       Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
-        for sound in self.sound_controls:
+        for sound_player in self.sound_controls.values():
             try:
-                sound.Stop()
+                sound_player.stop()
             except Exception as e:
-                log.error(f'Error pausing all audio playback: {e}')
+                log.error(f'Error stopping audio playback: {e}')
 
     def PlayVideo(self, video_file: str, start: int = 0, within: int = -1, volume: float = 1.0, loop: bool = False):
         """
