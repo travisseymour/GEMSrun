@@ -1873,21 +1873,19 @@ class ViewPanel(QWidget):
 
         sound_name = Path(sound_file).stem
 
-        if sound_name not in [sound.Name for sound in self.sound_controls]:
+        if sound_name not in self.sound_controls:
             log.info(dict(Kind='Action', Type='StopSound', View=self.View.Name, **gu.func_params(),
                           Target=None, Result='Invalid|SoundDoesNotExist', TimeTime=self.get_task_elapsed(),
                           ViewTime=self.view_elapsed()))
             return
-        else:
-            log.info(dict(Kind='Action', Type='StopSound', View=self.View.Name, **gu.func_params(), Target=None,
-                          Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+
+        log.info(dict(Kind='Action', Type='StopSound', View=self.View.Name, **gu.func_params(), Target=None,
+                      Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         try:
-            for sound_control in self.sound_controls:
-                if sound_control.Name == sound_name:
-                    sound_control.Sound.Stop()
+            self.sound_controls[sound_name].stop()
         except Exception as e:
-            log.error(f'Error pausing audio playback for {sound_file}: {e}')
+            log.error(f'Error stopping audio playback for {sound_file}: {e}')
 
     def StopAllSounds(self):
         """
