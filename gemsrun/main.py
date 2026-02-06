@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 import typer
 
 import gemsrun
+from gemsrun import log
 from gemsrun.gui import mainwindow
 from gemsrun.gui.parawindow import ParamDialog
 from gemsrun.session import sessionsetup as ssetup
@@ -24,7 +25,6 @@ app = typer.Typer(add_completion=False, help="GEMSrun command line interface.")
 
 def _preload_audio_with_spinner(db: Munch):
     """Preload all compressed audio files with a CLI spinner."""
-    from gemsrun import log
 
     log.debug("=== APP-START AUDIO CACHE: Beginning pre-application audio caching ===")
     media_path = db.Global.Options.MediaPath
