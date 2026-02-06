@@ -2077,12 +2077,19 @@ class ViewPanel(QWidget):
 
         msg = self.var_in_text(message)
 
+        msgbox = QMessageBox(self)
+        msgbox.setWindowTitle(title)
+        msgbox.setText(msg)
+        msgbox.setStandardButtons(QMessageBox.StandardButton.Ok)
         if dialog_kind == 'info':
-            QMessageBox.information(self, title, msg, QMessageBox.StandardButton.Ok)
+            msgbox.setIcon(QMessageBox.Icon.Information)
         elif dialog_kind == 'warn':
-            QMessageBox.warning(self, title, msg, QMessageBox.StandardButton.Ok )
+            msgbox.setIcon(QMessageBox.Icon.Warning)
         else:
-            QMessageBox.critical(self, title, msg, QMessageBox.StandardButton.Ok)
+            msgbox.setIcon(QMessageBox.Icon.Critical)
+
+        msgbox.setStyleSheet("background-color: white; color: black;")
+        msgbox.exec()
 
     def InputDialog(self, prompt: str, variable: str, title: str = '', default: str = ''):
         """
@@ -2100,9 +2107,13 @@ class ViewPanel(QWidget):
         _title = self.var_in_text(title)
         _default = self.var_in_text(default)
 
-        text, ok = QInputDialog.getText(self, _title, _prompt, text=_default)
-        if ok:
-            self.SetVariable(variable, text)
+        dialog = QInputDialog(self)
+        dialog.setWindowTitle(_title)
+        dialog.setLabelText(_prompt)
+        dialog.setTextValue(_default)
+        dialog.setStyleSheet("background-color: white; color: black;")
+        if dialog.exec():
+            self.SetVariable(variable, dialog.textValue())
 
     def SayText(self, message: str):
         """
