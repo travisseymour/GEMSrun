@@ -1186,20 +1186,45 @@ class ViewPanel(QWidget):
         if key_text in allowed:
             self.key_buffer += key_text
 
+        # Map special keys to named versions for trigger matching
+        # First check key codes for keys that don't produce text (arrow keys, etc.)
+        key_code_names = {
+            Qt.Key.Key_Up: "UP",
+            Qt.Key.Key_Down: "DOWN",
+            Qt.Key.Key_Left: "LEFT",
+            Qt.Key.Key_Right: "RIGHT",
+        }
+        # Then check text-based special keys
+        special_key_names = {
+            " ": "SPACE",
+            "\r": "ENTER",
+            "\n": "ENTER",
+            "\t": "TAB",
+            "\x1b": "ESCAPE",
+            "\x7f": "BACKSPACE",
+            "\x08": "BACKSPACE",
+        }
+        key_name = key_code_names.get(key, special_key_names.get(key_text, key_text))
+
         log.info(
             "Keyboard",
             Type="KeyPress",
             View=self.View.Name,
             Key=key,
             KeyText=key_text,
+            KeyName=key_name,
             Result="Valid" if key_text in allowed else "Invalid",
             TimeTime=self.parent().task_elapsed(),
             ViewTime=self.view_elapsed(),
         )
 
-        trigger = f'KeyPress("{key_text}")'
+        # Check both the literal key text and the named version
+        triggers_to_check = [f'KeyPress("{key_text}")']
+        if key_name != key_text:
+            triggers_to_check.append(f'KeyPress("{key_name}")')
+
         for action in self.View.Actions.values():
-            if action.Enabled and action.Trigger == trigger:
+            if action.Enabled and action.Trigger in triggers_to_check:
                 self.do_action(action.Condition, action.Action)
 
     # fmt: off
