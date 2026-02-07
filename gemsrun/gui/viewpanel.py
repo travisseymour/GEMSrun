@@ -741,6 +741,7 @@ class ViewPanel(QWidget):
 
     def start_timers(self):
         """Launch timers for any view or env actions with timed triggers"""
+        log.debug(f"=== start_timers called for view {self.view_id} at vt+ {timeit.default_timer() - self.view_start_time:.3f}s ===")
         # first check any global timers
         for action in chain(self.db.Global.GlobalActions.values(), self.View.Actions.values()):
             if not action.Enabled:
@@ -756,7 +757,12 @@ class ViewPanel(QWidget):
                     trigger_time_secs = float(params[0])
                     passed_so_far_secs = timeit.default_timer() - self.parent().task_start_time
                     if passed_so_far_secs >= trigger_time_secs:
-                        self.do_action(condition=action.Condition, action=action.Action)
+                        # Defer to next event loop iteration to avoid blocking timer setup
+                        self.make_action_timer(
+                            condition=action.Condition,
+                            action=action.Action,
+                            when_secs=0,
+                        )
                     else:
                         self.make_action_timer(
                             condition=action.Condition,
@@ -767,17 +773,26 @@ class ViewPanel(QWidget):
                     if action in self.db.Global.GlobalActions.values():
                         self.db.Global.GlobalActions[str(action.Id)].Enabled = False
                 elif func == "ViewTimePassed":
-                    log.debug("Handling ViewTimePassed Events:")
                     trigger_time_secs = float(params[0])
-
                     passed_so_far_secs = timeit.default_timer() - self.view_start_time
+                    log.debug(f"ViewTimePassed trigger: {trigger_time_secs}s, elapsed: {passed_so_far_secs:.3f}s, action: {action.Action}")
                     if passed_so_far_secs >= trigger_time_secs:
-                        self.do_action(condition=action.Condition, action=action.Action)
-                    else:
+                        # Defer to next event loop iteration so we finish setting up ALL timers first.
+                        # This prevents synchronous actions (like PlaySound with async=False) from
+                        # blocking the rest of the timer setup.
+                        log.debug(f"  -> Deferring immediate execution")
                         self.make_action_timer(
                             condition=action.Condition,
                             action=action.Action,
-                            when_secs=trigger_time_secs - passed_so_far_secs,
+                            when_secs=0,
+                        )
+                    else:
+                        delay = trigger_time_secs - passed_so_far_secs
+                        log.debug(f"  -> Setting timer for {delay:.3f}s")
+                        self.make_action_timer(
+                            condition=action.Condition,
+                            action=action.Action,
+                            when_secs=delay,
                         )
 
     def create_pockets(self):
@@ -979,7 +994,7 @@ class ViewPanel(QWidget):
         return None
 
     def do_action(self, condition: str, action: str):
-        log.debug(f"do_action fired at after vt+ {timeit.default_timer() - self.view_start_time} secs.")
+        log.debug(f"do_action fired for view {self.view_id} at vt+ {timeit.default_timer() - self.view_start_time:.3f}s, action: {action}")
         if not condition or self.safe_eval(condition):
             self.safe_eval(action)
 
