@@ -96,6 +96,7 @@ VALID_ACTIONS = [
     "PlayVideo",
     "PlayVideoWithin",
     "StopVideo",
+    "StopAllVideos",
     "AllowTake",
     "DisallowTake",
     "TextDialog",
@@ -2042,14 +2043,13 @@ class ViewPanel(QWidget):
         log.info(dict(Kind='Action', Type='StopAllVideos', View=self.View.Name, **gu.func_params(), Target=None,
                       Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
-        for video_name in self.video_controls.keys():
+        for video_name in list(self.video_controls.keys()):
             try:
-                self.video_controls[video_name].Controller.Stop()
-                self.video_controls[video_name].Controller.Destroy()
-                self.video_controls[video_name].Window.Destroy()
+                self.video_controls[video_name].close()
+                self.video_controls[video_name].hide()
                 del self.video_controls[video_name]
             except Exception as e:
-                log.error(f'Error pausing video playback for {video_name}: {e}')
+                log.error(f'Error stopping video playback for {video_name}: {e}')
 
     def Quit(self):
         """
