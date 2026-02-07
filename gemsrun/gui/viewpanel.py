@@ -94,6 +94,7 @@ VALID_ACTIONS = [
     "StopSound",
     "StopAllSounds",
     "PlayVideo",
+    "PlayVideoWithin",
     "StopVideo",
     "AllowTake",
     "DisallowTake",
@@ -1907,12 +1908,11 @@ class ViewPanel(QWidget):
             except Exception as e:
                 log.error(f'Error stopping audio playback: {e}')
 
-    def PlayVideo(self, video_file: str, start: int = 0, within: int = -1, volume: float = 1.0, loop: bool = False):
+    def PlayVideo(self, video_file: str, start: int = 0, left: int = 0, top: int = 0, volume: float = 1.0, loop: bool = False):
         """
-        This action instructs GEMS to play the video in <b><i>VideoFile</i></b>. The video beings playing at
-        <b><i>Start</i></b> seconds. If <b><i>Within</i></b> refers to the Id of a currently visible object,
-        the video will play within that object\'s boundary. Otherwise, the video will play from (0, 0) to
-        the native width and height of the video content.
+        This action instructs GEMS to play the video in <b><i>VideoFile</i></b>. The video begins playing at
+        <b><i>Start</i></b> seconds, positioned at (<b><i>Left</i></b>, <b><i>Top</i></b>) with its native
+        width and height.
         :scope viewobjectglobalpocket
         :mtype action
         """
@@ -1926,8 +1926,6 @@ class ViewPanel(QWidget):
             return
 
         if video_name in self.video_controls:
-            # can't just stop and restart bc it may have been within an object that no longer exists.
-            # or was in object, but now fullscreen etc.
             self.video_controls[video_name].close()
             self.video_controls[video_name].hide()
             del self.video_controls[video_name]
@@ -1935,20 +1933,65 @@ class ViewPanel(QWidget):
         log.info(dict(Kind='Action', Type='PlayVideo', View=self.View.Name, **gu.func_params(),
                       Target=None, Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
-        pos = QPoint(0, 0)
+        pos = QPoint(int(left), int(top))
         size = None
 
-        if within >= 0:
-            target = self.object_pics.get(int(within))
-            if target:
-                pos = target.pos()
-                size = target.size()
-                target.hide()
+        try:
+            if is_gif:
+                video = AnimationObject(self, video_path=video_path, pos=pos, size=size, start=start,
+                                        volume=self.options.Volume * volume * 1000, loop=loop)
             else:
-                log.warning(
-                    f'The "within" parameter ({within}) is not the id of an object in this view. '
-                    f"Showing video fullscreen instead."
-                )
+                video = VideoObject(self, video_path=video_path, pos=pos, size=size, start=start,
+                                    volume=self.options.Volume * volume * 1000, loop=loop)
+            self.video_controls[video_name] = video
+
+            self.reset_z_pos()
+
+        except Exception as e:
+            log.error(f'Unable to create or play video object from {str(video_path.resolve())}: {e}')
+
+    def PlayVideoWithin(self, video_file: str, start: int = 0, within: int = -1, volume: float = 1.0, loop: bool = False):
+        """
+        This action instructs GEMS to play the video in <b><i>VideoFile</i></b>. The video begins playing at
+        <b><i>Start</i></b> seconds. If <b><i>Within</i></b> refers to the Id of a currently visible object,
+        the video will play within that object's boundary. Otherwise, the video will play from (0, 0) with
+        its native width and height.
+        :scope viewobjectglobalpocket
+        :mtype action
+        """
+
+        if within < 0:
+            self.PlayVideo(video_file, start, 0, 0, volume, loop)
+            return
+
+        video_path = Path(self.options.MediaPath, video_file)
+        video_name = Path(video_path).stem
+        is_gif = video_path.suffix.lower() in {'.gif'}
+
+        if not self.options.PlayMedia and not is_gif:
+            log.warning("Media playback is not enabled.")
+            return
+
+        if video_name in self.video_controls:
+            self.video_controls[video_name].close()
+            self.video_controls[video_name].hide()
+            del self.video_controls[video_name]
+
+        log.info(dict(Kind='Action', Type='PlayVideoWithin', View=self.View.Name, **gu.func_params(),
+                      Target=None, Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+
+        target = self.object_pics.get(int(within))
+        if target:
+            pos = target.pos()
+            size = target.size()
+            target.hide()
+        else:
+            log.warning(
+                f'The "within" parameter ({within}) is not the id of an object in this view. '
+                f"Showing video at (0, 0) instead."
+            )
+            pos = QPoint(0, 0)
+            size = None
 
         try:
             if is_gif:
