@@ -1973,22 +1973,57 @@ class ViewPanel(QWidget):
         image.show()
         self.reset_z_pos()
 
-    def PortalTo(self, view_id: int):
+    def PortalTo(self, view_id: int, vid_file: str = ''):
         """
-        This action causes GEMS to load <b><i>ViewId</i></b>.
+        This action causes GEMS to load <b><i>ViewId</i></b>. If <b><i>VidFile</i></b> is provided
+        and exists, the video will play fullscreen first as a transition effect. The view change
+        occurs when the video finishes or is right-clicked.
 
         :scope viewobjectglobalpocket
         :mtype action
         """
-        if str(view_id) in self.db.Views:
-            log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
-                          Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
-            self.parent().next_view_id = view_id
-            self.parent().shutdown_view()
-        else:
+        if str(view_id) not in self.db.Views:
             log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
                           Result='Invalid|ViewDoesNotExist', TimeTime=self.get_task_elapsed(),
                           ViewTime=self.view_elapsed()))
+            return
+
+        def do_portal():
+            """Perform the actual portal to the target view."""
+            self.parent().next_view_id = view_id
+            self.parent().shutdown_view()
+
+        # Check if a transition video was specified
+        if vid_file:
+            video_path = Path(vid_file) if Path(vid_file).is_file() else Path(self.options.MediaPath, vid_file)
+            is_gif = video_path.suffix.lower() == '.gif'
+
+            if video_path.exists() and (self.options.PlayMedia or is_gif):
+                log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
+                              Result='Valid|WithTransition', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+
+                video_name = video_path.stem
+                pos = QPoint(0, 0)
+                size = self.size()
+
+                try:
+                    if is_gif:
+                        video = AnimationObject(self, video_path=video_path, pos=pos, size=size, start=0,
+                                                volume=self.options.Volume * 1000, loop=False, on_finish=do_portal)
+                    else:
+                        video = VideoObject(self, video_path=video_path, pos=pos, size=size, start=0,
+                                            volume=self.options.Volume * 1000, loop=False, on_finish=do_portal)
+                    self.video_controls[video_name] = video
+                    self.reset_z_pos()
+                    return
+                except Exception as e:
+                    log.error(f'Unable to create transition video from {str(video_path.resolve())}: {e}')
+                    # Fall through to do portal without video
+
+        # No transition video or video failed - do direct portal
+        log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
+                      Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+        do_portal()
 
     def PlaySound(self, sound_file: str, asynchronous: bool = True, volume: float = 1.0, loop: bool = False):
         """

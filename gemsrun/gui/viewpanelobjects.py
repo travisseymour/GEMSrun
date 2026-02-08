@@ -901,12 +901,14 @@ class VideoObject(QVideoWidget):
         start: int = 0,
         volume: float = 1.0,
         loop: bool = False,
+        on_finish: callable = None,
     ):
         super().__init__(parent=parent)
         self.video_path: Path = video_path
         self.player = None
         self.audio_output = None
         self.fallback_mode = False
+        self.on_finish = on_finish
 
         if loop:
             log.warning(
@@ -991,6 +993,8 @@ class VideoObject(QVideoWidget):
     def _on_media_status_changed(self, status):
         log.debug(f"Video status changed: {status}")
         if status == QMediaPlayer.MediaStatus.EndOfMedia:
+            if self.on_finish:
+                self.on_finish()
             self.close()
         elif status == QMediaPlayer.MediaStatus.InvalidMedia:
             log.warning(f"Invalid media encountered for {self.video_path}")
@@ -1023,6 +1027,8 @@ class VideoObject(QVideoWidget):
             )
 
             self.stop()
+            if self.on_finish:
+                self.on_finish()
             self.close()
 
 
@@ -1041,9 +1047,11 @@ class AnimationObject(QLabel):
         start: int = 0,
         volume: float = 1.0,
         loop: bool = False,
+        on_finish: callable = None,
     ):
         super().__init__(parent=parent)
         self.video_path: Path = video_path
+        self.on_finish = on_finish
 
         style_sheet = "QLabel{ background-color: rgba(0,0,0,0%); }"
         self.setStyleSheet(style_sheet)
@@ -1051,6 +1059,10 @@ class AnimationObject(QLabel):
         self.setScaledContents(True)
         self.movie = QMovie(str(video_path.absolute()), parent=self)
         self.setMovie(self.movie)
+
+        # For non-looping animations, connect finished signal
+        if not loop:
+            self.movie.finished.connect(self._on_movie_finished)
 
         if isinstance(size, QSize):
             self.setFixedSize(size)
@@ -1062,6 +1074,12 @@ class AnimationObject(QLabel):
         self.play()
         self.activateWindow()
         self.raise_()
+
+    def _on_movie_finished(self):
+        """Called when the animation finishes playing."""
+        if self.on_finish:
+            self.on_finish()
+        self.close()
 
     def play(self):
         with contextlib.suppress(Exception):
@@ -1100,4 +1118,6 @@ class AnimationObject(QLabel):
             )
 
             self.stop()
+            if self.on_finish:
+                self.on_finish()
             self.close()
