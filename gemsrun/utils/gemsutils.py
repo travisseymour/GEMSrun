@@ -60,7 +60,9 @@ def check_media(db_filename, database, media_folder) -> tuple:
 
     # define a helper function
     def file_ok(file_name: str):
-        return (not file_name) or os.path.isfile(os.path.join(media_folder, os.path.basename(file_name)))
+        return (not file_name) or os.path.isfile(
+            os.path.join(media_folder, os.path.basename(file_name))
+        )
 
     # loop through and update outcomelist with any missing files
     for record in all_records:
@@ -110,7 +112,9 @@ def check_connectivity(url: str):
         start = timeit.default_timer()
         response = urllib.request.urlopen(url, timeout=1, context=_get_ssl_context())
         log.debug(f"web response was {response}")
-        log.debug(f"finished checking connectivity after {timeit.default_timer() - start:0.4f} sec.")
+        log.debug(
+            f"finished checking connectivity after {timeit.default_timer() - start:0.4f} sec."
+        )
         return True
     except urllib.error.HTTPError as e:
         if e.code == 429:

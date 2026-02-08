@@ -33,7 +33,9 @@ PARAM_PATTERN2 = r"([a-z_]+: [A-Za-z]+( *= *[\w\.\"]+)*)+"  # allows defaults
 # ---
 # group1: 'varname: str'
 # group2: ' = "Sara"'
-INFO_PATTERN = r"def ([A-Za-z]+)[^\n]+\n[^']+'''([^'}]+)'''"  # needs multiline and dotall
+INFO_PATTERN = (
+    r"def ([A-Za-z]+)[^\n]+\n[^']+'''([^'}]+)'''"  # needs multiline and dotall
+)
 
 
 # group1: 'VarValueIs'
@@ -80,12 +82,16 @@ def format_info(func_info_text: str) -> dict:
 code = Path("../gui/viewpanel.py").read_text()
 # use regex to extract func defs and info
 func_defs = re.findall(pattern=FUNC_PATTERN, string=code)
-func_infos = re.findall(pattern=INFO_PATTERN, string=code, flags=re.MULTILINE | re.DOTALL)
+func_infos = re.findall(
+    pattern=INFO_PATTERN, string=code, flags=re.MULTILINE | re.DOTALL
+)
 
 # convert func_defs to a dict and...
 func_defs = dict(func_defs)
 # ...parse parameter list and
-func_defs = {k: re.findall(pattern=PARAM_PATTERN2, string=v) for k, v in func_defs.items()}
+func_defs = {
+    k: re.findall(pattern=PARAM_PATTERN2, string=v) for k, v in func_defs.items()
+}
 # ...convert them into cleaned up dictionaries
 func_defs = {k: fix_param(v) for k, v in func_defs.items()}
 
@@ -116,4 +122,6 @@ with open("actionmethodinfo.py", "w") as outfile:
     pprint(func_infos, width=180, stream=outfile)
 # print(f'func_infos = \\\n{str(func_infos)}')
 print("\nSee file actionmethodinfo.py for result of this operation.")
-print("\nNOTE: ANY METHOD NOT IN THAT LIST IS NOT PROPERLY FORMATTED (MAYBE MISSING HELP AND SCOPE?)")
+print(
+    "\nNOTE: ANY METHOD NOT IN THAT LIST IS NOT PROPERLY FORMATTED (MAYBE MISSING HELP AND SCOPE?)"
+)

@@ -66,7 +66,9 @@ def func_str_parts(cmd: str) -> tuple[str, list[str]]:
     # params = func.group(2) or ""
 
     param_list = split_pattern.split(params)
-    param_list = [item.replace('"(LEFT) ', "[").replace(' (RIGHT)"', "]") for item in param_list]
+    param_list = [
+        item.replace('"(LEFT) ', "[").replace(' (RIGHT)"', "]") for item in param_list
+    ]
 
     return fn, param_list
 

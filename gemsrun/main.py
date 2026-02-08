@@ -31,10 +31,14 @@ def _preload_audio_with_spinner(db: Munch):
     audio_files = audiocache.find_playsound_files_in_database(db, media_path)
 
     if not audio_files:
-        log.debug("=== APP-START AUDIO CACHE: No compressed audio files found to cache ===")
+        log.debug(
+            "=== APP-START AUDIO CACHE: No compressed audio files found to cache ==="
+        )
         return
 
-    log.debug(f"=== APP-START AUDIO CACHE: Found {len(audio_files)} compressed audio file(s) to cache ===")
+    log.debug(
+        f"=== APP-START AUDIO CACHE: Found {len(audio_files)} compressed audio file(s) to cache ==="
+    )
 
     # Spinner animation
     spinner = itertools.cycle(["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
@@ -65,7 +69,9 @@ def _preload_audio_with_spinner(db: Munch):
     sys.stdout.write("\r" + " " * 80 + "\r")  # Clear the line
     sys.stdout.flush()
     print(f"✓ Loaded {len(audio_files)} audio file(s) into cache")
-    log.debug(f"=== APP-START AUDIO CACHE: Completed caching {len(audio_files)} audio file(s) ===")
+    log.debug(
+        f"=== APP-START AUDIO CACHE: Completed caching {len(audio_files)} audio file(s) ==="
+    )
 
 
 def _handle_clear_cache():
@@ -81,25 +87,45 @@ def _handle_clear_cache():
 @app.command()
 def run(
     env_path: str | None = typer.Argument(
-        None, metavar="FILENAME", help="GEMS environment filename (positional or --file)."
+        None,
+        metavar="FILENAME",
+        help="GEMS environment filename (positional or --file).",
     ),
     user_arg: str | None = typer.Argument(
         None, metavar="USERID", help="User ID string, used to create data file name."
     ),
-    fname: str | None = typer.Option(None, "--file", "-f", help="Specify your gems environment filename."),
-    user: str | None = typer.Option(None, "--user", "-u", help="Specify user ID string."),
-    skipdata: bool | None = typer.Option(None, "--skipdata/--no-skipdata", "-s", help="Suppress the output data file."),
+    fname: str | None = typer.Option(
+        None, "--file", "-f", help="Specify your gems environment filename."
+    ),
+    user: str | None = typer.Option(
+        None, "--user", "-u", help="Specify user ID string."
+    ),
+    skipdata: bool | None = typer.Option(
+        None, "--skipdata/--no-skipdata", "-s", help="Suppress the output data file."
+    ),
     overwrite: bool | None = typer.Option(
-        None, "--overwrite/--no-overwrite", "-o", help="Enable overwriting of duplicate output data."
+        None,
+        "--overwrite/--no-overwrite",
+        "-o",
+        help="Enable overwriting of duplicate output data.",
     ),
     debug: bool | None = typer.Option(
-        None, "--debug/--no-debug", "-d", help="Write extra debugging information to terminal."
+        None,
+        "--debug/--no-debug",
+        "-d",
+        help="Write extra debugging information to terminal.",
     ),
     skipmedia: bool | None = typer.Option(
-        None, "--skipmedia/--no-skipmedia", "-k", help="Disable playback of audio and video files."
+        None,
+        "--skipmedia/--no-skipmedia",
+        "-k",
+        help="Disable playback of audio and video files.",
     ),
     skipgui: bool = typer.Option(
-        False, "--skipgui", "-g", help="Suppress GUI prompt for missing command-line parameters."
+        False,
+        "--skipgui",
+        "-g",
+        help="Suppress GUI prompt for missing command-line parameters.",
     ),
     fullscreen: bool | None = typer.Option(
         None, "--fullscreen/--no-fullscreen", "-F", help="Launch runner in fullscreen."
@@ -119,20 +145,40 @@ def run(
     settings = gemsrun.SETTINGS
     args = Munch(
         {
-            "fname": cli_fname if cli_fname else settings.value("fname", defaultValue="", type=str),
-            "user": (cli_user if cli_user is not None else settings.value("user", defaultValue="User1", type=str)),
+            "fname": (
+                cli_fname
+                if cli_fname
+                else settings.value("fname", defaultValue="", type=str)
+            ),
+            "user": (
+                cli_user
+                if cli_user is not None
+                else settings.value("user", defaultValue="User1", type=str)
+            ),
             "skipdata": (
-                skipdata if skipdata is not None else settings.value("skipdata", defaultValue=False, type=bool)
+                skipdata
+                if skipdata is not None
+                else settings.value("skipdata", defaultValue=False, type=bool)
             ),
             "fullscreen": (
-                fullscreen if fullscreen is not None else settings.value("fullscreen", defaultValue=False, type=bool)
+                fullscreen
+                if fullscreen is not None
+                else settings.value("fullscreen", defaultValue=False, type=bool)
             ),
             "overwrite": (
-                overwrite if overwrite is not None else settings.value("overwrite", defaultValue=False, type=bool)
+                overwrite
+                if overwrite is not None
+                else settings.value("overwrite", defaultValue=False, type=bool)
             ),
-            "debug": (debug if debug is not None else settings.value("debug", defaultValue=False, type=bool)),
+            "debug": (
+                debug
+                if debug is not None
+                else settings.value("debug", defaultValue=False, type=bool)
+            ),
             "skipmedia": (
-                skipmedia if skipmedia is not None else settings.value("skipmedia", defaultValue=False, type=bool)
+                skipmedia
+                if skipmedia is not None
+                else settings.value("skipmedia", defaultValue=False, type=bool)
             ),
         }
     )

@@ -160,7 +160,9 @@ class CrossPlatformAudioPlayer(QObject):
 
             self._was_playing = True
             self._pending_play = False
-            log.info(f"Playing audio: {self.sound_file}, volume={self.volume}, loop={self.loop}")
+            log.info(
+                f"Playing audio: {self.sound_file}, volume={self.volume}, loop={self.loop}"
+            )
 
             # Start monitoring playback state for non-looping sounds
             if not self.loop:
@@ -205,7 +207,9 @@ class CrossPlatformAudioPlayer(QObject):
             # Start background loading
             self._pending_play = True
             log.debug(f"Starting background load for: {self.sound_file}")
-            thread = threading.Thread(target=self._load_and_play_background, daemon=True)
+            thread = threading.Thread(
+                target=self._load_and_play_background, daemon=True
+            )
             thread.start()
             return True
 

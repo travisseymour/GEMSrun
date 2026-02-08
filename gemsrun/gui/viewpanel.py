@@ -127,7 +127,9 @@ class SoundPlayer:
         from gemsrun.utils.audioutils import CrossPlatformAudioPlayer
 
         try:
-            self._player = CrossPlatformAudioPlayer(sound_file=sound_file, volume=self._volume, loop=loop)
+            self._player = CrossPlatformAudioPlayer(
+                sound_file=sound_file, volume=self._volume, loop=loop
+            )
             log.debug(f"Created cross-platform audio player for {sound_file}")
         except Exception as e:
             log.error(f"Failed to create audio player: {e}")
@@ -196,18 +198,24 @@ class ViewPanel(QWidget):
         self.view_id: int = view_id
         self.View: Munch | None = None
         self.background = QLabel(self)  # QLabel that holds the background image
-        self.foreground_image: QImage | None = None  # is a QImage, we'll get object images from it
+        self.foreground_image: QImage | None = (
+            None  # is a QImage, we'll get object images from it
+        )
         self.nav_image: QImage | None = None
         self.pocket_bitmap: QImage | None = None
         self.view_is_fullscreen = self.options.DisplayType.lower() == "fullscreen"
 
-        self.sleep_event_loop = QEventLoop()  # useful for synchronous GEMS actions -- blocks ui until done.
+        self.sleep_event_loop = (
+            QEventLoop()
+        )  # useful for synchronous GEMS actions -- blocks ui until done.
 
         # holders for various view objects
         self.object_pics: dict[int, ViewImageObject] = {}  # indexed by obj number
         self.overlay_pics = {}  # indexed by overlay filename stem
         self.external_pics = {}  # indexed by pic filename stem
-        self.nav_pics = {}  # indexed by direction name (i.e., NavTop, NavLeft, NavBottom, NavRight)
+        self.nav_pics = (
+            {}
+        )  # indexed by direction name (i.e., NavTop, NavLeft, NavBottom, NavRight)
         self.sound_controls = {}  # indexed by filename stem
         self.video_controls = {}  # indexed by filename stem
         self.text_boxes = {}  # indexed by hash
@@ -219,7 +227,9 @@ class ViewPanel(QWidget):
         self.dragging = False  # True if we're currently in a drag
         self.dragging_icon = None
         self.dragging_object = None  # Object we're currently dragging from
-        self.drag_object_bitmap = None  # Hold drag object bitmap whilst dragging..avoids re-lookup
+        self.drag_object_bitmap = (
+            None  # Hold drag object bitmap whilst dragging..avoids re-lookup
+        )
         self.draw_pos = QPoint(0, 0)
 
         self.setAcceptDrops(True)  # allow drops to nothing
@@ -232,7 +242,9 @@ class ViewPanel(QWidget):
 
         screen = gemsrun.APPLICATION.primaryScreen()
         self.screen_rect = screen.availableGeometry()
-        self.orig_image_rect: QRect = self.screen_rect  # temp, until first bg image is loaded
+        self.orig_image_rect: QRect = (
+            self.screen_rect
+        )  # temp, until first bg image is loaded
         self.background_scale: list[float] = [
             1.0,
             1.0,
@@ -288,13 +300,19 @@ class ViewPanel(QWidget):
         from PySide6.QtCore import QCoreApplication
         from PySide6.QtWidgets import QFrame
 
-        log.debug(f"=== VIEW-START AUDIO CACHE: Beginning pre-view audio caching for view {self.view_id} ===")
+        log.debug(
+            f"=== VIEW-START AUDIO CACHE: Beginning pre-view audio caching for view {self.view_id} ==="
+        )
 
         # Find audio files for this view
-        audio_files = audiocache.find_playsound_files_for_view(self.db, self.view_id, self.options.MediaPath)
+        audio_files = audiocache.find_playsound_files_for_view(
+            self.db, self.view_id, self.options.MediaPath
+        )
 
         if not audio_files:
-            log.debug(f"=== VIEW-START AUDIO CACHE: No compressed audio files found for view {self.view_id} ===")
+            log.debug(
+                f"=== VIEW-START AUDIO CACHE: No compressed audio files found for view {self.view_id} ==="
+            )
             return  # Nothing to preload
 
         log.debug(
@@ -353,10 +371,14 @@ class ViewPanel(QWidget):
         )
 
     def geom_x_adjust(self, value: int | float) -> int:
-        return self.view_top_left_adjustment[0] + geom_x_adjust(value, self.background_scale[0])
+        return self.view_top_left_adjustment[0] + geom_x_adjust(
+            value, self.background_scale[0]
+        )
 
     def geom_y_adjust(self, value: int | float) -> int:
-        return self.view_top_left_adjustment[1] + geom_y_adjust(value, self.background_scale[1])
+        return self.view_top_left_adjustment[1] + geom_y_adjust(
+            value, self.background_scale[1]
+        )
 
     def geom_x_scale(self, value: int | float) -> int:
         return geom_x_adjust(value, self.background_scale[0])
@@ -395,7 +417,9 @@ class ViewPanel(QWidget):
         self.sleep_event_loop.exec()
 
     @classmethod
-    def _nav_cache_key(cls, nav_panel: Path, width: int, height: int, nav_extent: int) -> tuple[str, int, int, int]:
+    def _nav_cache_key(
+        cls, nav_panel: Path, width: int, height: int, nav_extent: int
+    ) -> tuple[str, int, int, int]:
         return (str(nav_panel.resolve()), width, height, nav_extent)
 
     @classmethod
@@ -406,7 +430,9 @@ class ViewPanel(QWidget):
         return cls._nav_panel_cache[key]
 
     @classmethod
-    def _get_pocket_bitmap(cls, pocket_pic: Path, stage_width: int, stage_height: int) -> QImage:
+    def _get_pocket_bitmap(
+        cls, pocket_pic: Path, stage_width: int, stage_height: int
+    ) -> QImage:
         cache_key = (str(pocket_pic.resolve()), stage_width, stage_height)
         if cache_key in cls._pocket_bitmap_cache:
             return cls._pocket_bitmap_cache[cache_key]
@@ -415,7 +441,10 @@ class ViewPanel(QWidget):
         try:
             max_pocket_w = max(50, int(stage_width * 0.25))
             max_pocket_h = max(50, int(stage_height * 0.25))
-            if pocket_bitmap.width() > max_pocket_w or pocket_bitmap.height() > max_pocket_h:
+            if (
+                pocket_bitmap.width() > max_pocket_w
+                or pocket_bitmap.height() > max_pocket_h
+            ):
                 pocket_bitmap = pocket_bitmap.scaled(
                     max_pocket_w,
                     max_pocket_h,
@@ -438,7 +467,9 @@ class ViewPanel(QWidget):
                 # no matter what, expect last 4 values of list to be integers for rgba
                 stage_color = list(reversed(eval(stage_color)))
                 a, b, g, r, *other = stage_color
-                self.setStyleSheet("QWidget{" + f"background-color:rgba({r},{g},{b},{a});" + "}")
+                self.setStyleSheet(
+                    "QWidget{" + f"background-color:rgba({r},{g},{b},{a});" + "}"
+                )
         except Exception as e:
             log.warning(f"Unable to set stage color: ({e})")
 
@@ -467,7 +498,10 @@ class ViewPanel(QWidget):
                     if display_type == "fullscreen"
                     else gemsrun.APPLICATION.primaryScreen().availableGeometry()
                 )
-                stage_width, stage_height = available_geom.width(), available_geom.height()
+                stage_width, stage_height = (
+                    available_geom.width(),
+                    available_geom.height(),
+                )
                 available_top_left = available_geom.topLeft()
                 self._set_parent_geometry(
                     available_top_left.x(),
@@ -478,9 +512,15 @@ class ViewPanel(QWidget):
             else:
                 # Use the size of the Start View (EnvDims) for all other views in windowed mode
                 try:
-                    stage_width, stage_height = (int(self.options.EnvDims[0]), int(self.options.EnvDims[1]))
+                    stage_width, stage_height = (
+                        int(self.options.EnvDims[0]),
+                        int(self.options.EnvDims[1]),
+                    )
                 except Exception:
-                    stage_width, stage_height = self.screen_rect.width(), self.screen_rect.height()
+                    stage_width, stage_height = (
+                        self.screen_rect.width(),
+                        self.screen_rect.height(),
+                    )
 
             # Always size the view panel to the chosen stage size; individual images are letterboxed within.
             self.setGeometry(0, 0, stage_width, stage_height)
@@ -488,7 +528,10 @@ class ViewPanel(QWidget):
             pixmap = QPixmap.fromImage(QImage(str(bg_path.resolve())))
             self.orig_image_rect = pixmap.rect()  # save rect of unaltered bg_image
 
-            scale_factor = min(stage_width / self.orig_image_rect.width(), stage_height / self.orig_image_rect.height())
+            scale_factor = min(
+                stage_width / self.orig_image_rect.width(),
+                stage_height / self.orig_image_rect.height(),
+            )
             scaled_width = int(self.orig_image_rect.width() * scale_factor)
             scaled_height = int(self.orig_image_rect.height() * scale_factor)
 
@@ -514,7 +557,9 @@ class ViewPanel(QWidget):
             )
 
         except Exception as e:
-            log.critical(f"Unable to load background image for view # {self.view_id}: {e}")
+            log.critical(
+                f"Unable to load background image for view # {self.view_id}: {e}"
+            )
             self.fail_dialog(
                 "Unrecoverable Error",
                 f"Unable to load background image ({str(bg_path)}) for view # {self.view_id}: {e}",
@@ -550,7 +595,9 @@ class ViewPanel(QWidget):
 
             self.foreground_image = staged_fg
         except Exception as e:
-            log.critical(f"Unable to load foreground image for view # {self.view_id}: {e}")
+            log.critical(
+                f"Unable to load foreground image for view # {self.view_id}: {e}"
+            )
             self.fail_dialog(
                 "Unrecoverable Error",
                 f"Unable to load foreground image ({str(bg_path)}) for view # {self.view_id}: {e}",
@@ -581,7 +628,9 @@ class ViewPanel(QWidget):
 
         # either load custom pocket image from env media folder, or use default one
         pocket_pic = self._resolve_env_asset("pocket.png")
-        self.pocket_bitmap = self._get_pocket_bitmap(pocket_pic, self.width(), self.height())
+        self.pocket_bitmap = self._get_pocket_bitmap(
+            pocket_pic, self.width(), self.height()
+        )
 
     def reset_z_pos(self):
         # maintain relative z-pos
@@ -596,7 +645,9 @@ class ViewPanel(QWidget):
 
     def env_info(self):
         if self.db.Variables:
-            _vars = "\n".join([f"{key}={value}" for key, value in self.db.Variables.items()])
+            _vars = "\n".join(
+                [f"{key}={value}" for key, value in self.db.Variables.items()]
+            )
         else:
             _vars = "None"
         text = f"------ VARIABLES ------\n{_vars}\n"
@@ -664,8 +715,16 @@ class ViewPanel(QWidget):
             g = self.rect()  # local coords
             buffer = 50
 
-            bg_width = self.background.pixmap().width() if self.background.pixmap() else g.width()
-            bg_height = self.background.pixmap().height() if self.background.pixmap() else g.height()
+            bg_width = (
+                self.background.pixmap().width()
+                if self.background.pixmap()
+                else g.width()
+            )
+            bg_height = (
+                self.background.pixmap().height()
+                if self.background.pixmap()
+                else g.height()
+            )
 
             # Constrain to the scaled image area inside the stage, not the whole stage
             min_x = x_offset + buffer
@@ -703,7 +762,11 @@ class ViewPanel(QWidget):
                 Kind="Mouse",
                 Type="DragOntoNothing",
                 View=self.View.Name,
-                Source=(self.dragging_object.object.Id if hasattr(self.dragging_object, "object") else "???"),
+                Source=(
+                    self.dragging_object.object.Id
+                    if hasattr(self.dragging_object, "object")
+                    else "???"
+                ),
                 Result="Invalid|NoTarget",
                 TimeTime=self.parent().task_elapsed(),
                 ViewTime=self.view_elapsed(),
@@ -732,7 +795,9 @@ class ViewPanel(QWidget):
             self.object_pics[_object.Id].setGeometry(adjusted_object_rect)
 
     def make_action_timer(self, condition: str, action: str, when_secs: float):
-        log.debug(f'SETTING A TIMER TO "{action}" in {when_secs * 1000} ms if condition "{condition}" is met.')
+        log.debug(
+            f'SETTING A TIMER TO "{action}" in {when_secs * 1000} ms if condition "{condition}" is met.'
+        )
         QTimer.singleShot(
             int(when_secs * 1000),
             self,
@@ -741,21 +806,31 @@ class ViewPanel(QWidget):
 
     def start_timers(self):
         """Launch timers for any view or env actions with timed triggers"""
-        log.debug(f"=== start_timers called for view {self.view_id} at vt+ {timeit.default_timer() - self.view_start_time:.3f}s ===")
+        log.debug(
+            f"=== start_timers called for view {self.view_id} at vt+ {timeit.default_timer() - self.view_start_time:.3f}s ==="
+        )
         # first check any global timers
-        for action in chain(self.db.Global.GlobalActions.values(), self.View.Actions.values()):
+        for action in chain(
+            self.db.Global.GlobalActions.values(), self.View.Actions.values()
+        ):
             if not action.Enabled:
                 continue
             # make sure action parts are valid and also get breakdown for each
             condition_info = self.valid_api_call(expression=action.Condition)
             trigger_info = self.valid_api_call(expression=action.Trigger)
             action_info = self.valid_api_call(expression=action.Action)
-            if trigger_info and action_info and (condition_info or not action.Condition):
+            if (
+                trigger_info
+                and action_info
+                and (condition_info or not action.Condition)
+            ):
                 func, params = trigger_info
                 if func == "TotalTimePassed":
                     log.debug("Handling TotalTimePassed Events:")
                     trigger_time_secs = float(params[0])
-                    passed_so_far_secs = timeit.default_timer() - self.parent().task_start_time
+                    passed_so_far_secs = (
+                        timeit.default_timer() - self.parent().task_start_time
+                    )
                     if passed_so_far_secs >= trigger_time_secs:
                         # Defer to next event loop iteration to avoid blocking timer setup
                         self.make_action_timer(
@@ -775,12 +850,14 @@ class ViewPanel(QWidget):
                 elif func == "ViewTimePassed":
                     trigger_time_secs = float(params[0])
                     passed_so_far_secs = timeit.default_timer() - self.view_start_time
-                    log.debug(f"ViewTimePassed trigger: {trigger_time_secs}s, elapsed: {passed_so_far_secs:.3f}s, action: {action.Action}")
+                    log.debug(
+                        f"ViewTimePassed trigger: {trigger_time_secs}s, elapsed: {passed_so_far_secs:.3f}s, action: {action.Action}"
+                    )
                     if passed_so_far_secs >= trigger_time_secs:
                         # Defer to next event loop iteration so we finish setting up ALL timers first.
                         # This prevents synchronous actions (like PlaySound with async=False) from
                         # blocking the rest of the timer setup.
-                        log.debug(f"  -> Deferring immediate execution")
+                        log.debug("  -> Deferring immediate execution")
                         self.make_action_timer(
                             condition=action.Condition,
                             action=action.Action,
@@ -806,7 +883,9 @@ class ViewPanel(QWidget):
                 f'Global.Options.Pocketcount was set to an invalid value "{self.options.Pocketcount}", setting to 4.'
             )
 
-        self.parent().pocket_objects = Munch({i: ViewPocketObject(self, i) for i in range(self.options.Pocketcount)})
+        self.parent().pocket_objects = Munch(
+            {i: ViewPocketObject(self, i) for i in range(self.options.Pocketcount)}
+        )
         for pocket in self.parent().pocket_objects.values():
             pocket.show()
             pocket.raise_()
@@ -825,7 +904,11 @@ class ViewPanel(QWidget):
     def create_nav_pics(self):
         # create all the nave images
         for nav_type in ("NavLeft", "NavRight", "NavTop", "NavBottom"):
-            actions = [action for action in self.View.Actions.values() if action.Trigger.startswith(nav_type)]
+            actions = [
+                action
+                for action in self.View.Actions.values()
+                if action.Trigger.startswith(nav_type)
+            ]
             if actions:
                 nav_pic = NavImageObject(
                     self,
@@ -858,7 +941,9 @@ class ViewPanel(QWidget):
 
     def on_media_stop(self, event, name: str = "unknown"):
         if name in self.video_controls and self.video_controls[name].Looped:
-            self.video_controls[name].Controller.Seek(where=self.video_controls[name].Start)
+            self.video_controls[name].Controller.Seek(
+                where=self.video_controls[name].Start
+            )
             self.video_controls[name].Controller.Play()
             event.Veto()
         else:
@@ -912,7 +997,11 @@ class ViewPanel(QWidget):
         loop: bool = False,
         volume: float = 1.0,
     ):
-        sound_path = Path(sound_file) if Path(sound_file).is_file() else Path(self.options.MediaPath, sound_file)
+        sound_path = (
+            Path(sound_file)
+            if Path(sound_file).is_file()
+            else Path(self.options.MediaPath, sound_file)
+        )
         sound_name = sound_path.stem
 
         if sound_name in self.sound_controls:
@@ -925,9 +1014,13 @@ class ViewPanel(QWidget):
 
         # Log whether playing from cache or original
         if playback_path != sound_path:
-            log.debug(f">>> AUDIO PLAYBACK: Playing from CACHE: {playback_path.name} (original: {sound_path.name})")
+            log.debug(
+                f">>> AUDIO PLAYBACK: Playing from CACHE: {playback_path.name} (original: {sound_path.name})"
+            )
         else:
-            log.debug(f">>> AUDIO PLAYBACK: Playing from MEDIA FOLDER: {sound_path.name}")
+            log.debug(
+                f">>> AUDIO PLAYBACK: Playing from MEDIA FOLDER: {sound_path.name}"
+            )
 
         try:
             player = SoundPlayer(
@@ -940,7 +1033,9 @@ class ViewPanel(QWidget):
             player.play()
 
             if not asynchronous:
-                self.sleep(msec=500)  # it takes a moment to get going, only then is duration available.
+                self.sleep(
+                    msec=500
+                )  # it takes a moment to get going, only then is duration available.
                 time_left = player.duration() - 500
                 if time_left > 0 and player.is_playing():
                     self.sleep(msec=time_left)
@@ -972,14 +1067,20 @@ class ViewPanel(QWidget):
         try:
             fn, param_list = func_str_parts(cmd=expression)
         except Exception:
-            log.critical(f"ERROR: '{expression}' is an Unknown or mis-parameterized function string.")
+            log.critical(
+                f"ERROR: '{expression}' is an Unknown or mis-parameterized function string."
+            )
             return None
 
         # make sure it's ok to actually call this function
         try:
             ok_calls = chain(VALID_CONDITIONS, VALID_ACTIONS, VALID_TRIGGERS)
-            assert fn in ok_calls, f"ERROR: The GEMS API does not expose a method called '{expression}'."
-            assert hasattr(self, fn), f"ERROR: GEMS API method '{expression}' is not currently available."
+            assert (
+                fn in ok_calls
+            ), f"ERROR: The GEMS API does not expose a method called '{expression}'."
+            assert hasattr(
+                self, fn
+            ), f"ERROR: GEMS API method '{expression}' is not currently available."
         except Exception as e:
             log.critical(str(e))
             return None
@@ -989,12 +1090,18 @@ class ViewPanel(QWidget):
         ok_params = [is_safe_value(val) for val in param_values]
 
         if all(ok_params):
-            return eval(f"self.{expression}")  # NOTE: before you freak out about eval(), see the safestrfunc module
-        log.critical("ERROR: The GEMS API only supports constant values as method parameters (including list items).")
+            return eval(
+                f"self.{expression}"
+            )  # NOTE: before you freak out about eval(), see the safestrfunc module
+        log.critical(
+            "ERROR: The GEMS API only supports constant values as method parameters (including list items)."
+        )
         return None
 
     def do_action(self, condition: str, action: str):
-        log.debug(f"do_action fired for view {self.view_id} at vt+ {timeit.default_timer() - self.view_start_time:.3f}s, action: {action}")
+        log.debug(
+            f"do_action fired for view {self.view_id} at vt+ {timeit.default_timer() - self.view_start_time:.3f}s, action: {action}"
+        )
         if not condition or self.safe_eval(condition):
             self.safe_eval(action)
 
@@ -1058,7 +1165,10 @@ class ViewPanel(QWidget):
 
     def handle_pocket_drop(self, dropped_object_id: str, pocket_id: int) -> bool:
         # is this pocket even available?
-        if pocket_id in self.parent().pocket_objects and not self.parent().pocket_objects[pocket_id].object_info:
+        if (
+            pocket_id in self.parent().pocket_objects
+            and not self.parent().pocket_objects[pocket_id].object_info
+        ):
             log.info(
                 dict(
                     Kind="Mouse",
@@ -1075,7 +1185,10 @@ class ViewPanel(QWidget):
             return False
 
         # is this object even takeable?
-        if dropped_object_id in self.View.Objects and not self.View.Objects[dropped_object_id].Takeable:
+        if (
+            dropped_object_id in self.View.Objects
+            and not self.View.Objects[dropped_object_id].Takeable
+        ):
             log.info(
                 dict(
                     Kind="Mouse",
@@ -1108,7 +1221,9 @@ class ViewPanel(QWidget):
 
         # first, remove object from view
         try:
-            self.db.Views[str(self.view_id)].Objects[dropped_object_id].Visible = False  # set object to visible in db
+            self.db.Views[str(self.view_id)].Objects[
+                dropped_object_id
+            ].Visible = False  # set object to visible in db
             self.object_pics[int(dropped_object_id)].hide()
         except Exception:
             ...
@@ -1130,7 +1245,9 @@ class ViewPanel(QWidget):
 
         return True
 
-    def handle_object_drop(self, source_id: int, target_id: int, source_view_id: int = -1):
+    def handle_object_drop(
+        self, source_id: int, target_id: int, source_view_id: int = -1
+    ):
         # if there's nothing to do, bail early
         if source_id == target_id:
             return
@@ -1181,7 +1298,12 @@ class ViewPanel(QWidget):
                 self.do_action(action.Condition, action.Action)
 
     def handle_key_press(self, key_code):
-        allowed = string.digits + string.ascii_letters + string.punctuation + string.whitespace
+        allowed = (
+            string.digits
+            + string.ascii_letters
+            + string.punctuation
+            + string.whitespace
+        )
         key, key_text = key_code.key(), key_code.text()
         if key_text in allowed:
             self.key_buffer += key_text

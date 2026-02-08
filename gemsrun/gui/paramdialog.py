@@ -103,7 +103,9 @@ class Ui_paramDialog:
 
         self.horizontalLayout_2.addWidget(self.skipdataCheckBox)
 
-        self.horizontalSpacer = QSpacerItem(408, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.horizontalSpacer = QSpacerItem(
+            408, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
 
         self.horizontalLayout_2.addItem(self.horizontalSpacer)
 
@@ -118,7 +120,9 @@ class Ui_paramDialog:
 
         self.horizontalLayout_6.addWidget(self.overwriteCheckBox)
 
-        self.horizontalSpacer_3 = QSpacerItem(408, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.horizontalSpacer_3 = QSpacerItem(
+            408, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
 
         self.horizontalLayout_6.addItem(self.horizontalSpacer_3)
 
@@ -133,7 +137,9 @@ class Ui_paramDialog:
 
         self.horizontalLayout_7.addWidget(self.debugCheckBox)
 
-        self.horizontalSpacer_4 = QSpacerItem(408, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.horizontalSpacer_4 = QSpacerItem(
+            408, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
 
         self.horizontalLayout_7.addItem(self.horizontalSpacer_4)
 
@@ -148,7 +154,9 @@ class Ui_paramDialog:
 
         self.horizontalLayout_5.addWidget(self.skipmediaCheckBox)
 
-        self.horizontalSpacer_2 = QSpacerItem(408, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.horizontalSpacer_2 = QSpacerItem(
+            408, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
 
         self.horizontalLayout_5.addItem(self.horizontalSpacer_2)
 
@@ -163,7 +171,9 @@ class Ui_paramDialog:
 
         self.horizontalLayout_9.addWidget(self.fullscreenCheckBox)
 
-        self.horizontalSpacer_6 = QSpacerItem(408, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.horizontalSpacer_6 = QSpacerItem(
+            408, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
 
         self.horizontalLayout_9.addItem(self.horizontalSpacer_6)
 
@@ -171,7 +181,9 @@ class Ui_paramDialog:
 
         self.horizontalLayout_8 = QHBoxLayout()
         self.horizontalLayout_8.setObjectName("horizontalLayout_8")
-        self.horizontalSpacer_5 = QSpacerItem(438, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.horizontalSpacer_5 = QSpacerItem(
+            438, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
 
         self.horizontalLayout_8.addItem(self.horizontalSpacer_5)
 
@@ -200,7 +212,9 @@ class Ui_paramDialog:
     # setupUi
 
     def retranslateUi(self, paramDialog):
-        paramDialog.setWindowTitle(QCoreApplication.translate("paramDialog", "Dialog", None))
+        paramDialog.setWindowTitle(
+            QCoreApplication.translate("paramDialog", "Dialog", None)
+        )
         self.label.setText(
             QCoreApplication.translate(
                 "paramDialog",
@@ -209,7 +223,11 @@ class Ui_paramDialog:
             )
         )
         # if QT_CONFIG(tooltip)
-        self.label_5.setToolTip(QCoreApplication.translate("paramDialog", "Current GEMS Environment FIle Path", None))
+        self.label_5.setToolTip(
+            QCoreApplication.translate(
+                "paramDialog", "Current GEMS Environment FIle Path", None
+            )
+        )
         # endif // QT_CONFIG(tooltip)
         self.label_5.setText(
             QCoreApplication.translate(
@@ -220,15 +238,25 @@ class Ui_paramDialog:
         )
         # if QT_CONFIG(tooltip)
         self.envLineEdit.setToolTip(
-            QCoreApplication.translate("paramDialog", "Current GEMS Environment FIle Path", None)
+            QCoreApplication.translate(
+                "paramDialog", "Current GEMS Environment FIle Path", None
+            )
         )
         # endif // QT_CONFIG(tooltip)
         # if QT_CONFIG(tooltip)
-        self.toolButton.setToolTip(QCoreApplication.translate("paramDialog", "Choose GEMS Environment File", None))
+        self.toolButton.setToolTip(
+            QCoreApplication.translate(
+                "paramDialog", "Choose GEMS Environment File", None
+            )
+        )
         # endif // QT_CONFIG(tooltip)
         self.toolButton.setText(QCoreApplication.translate("paramDialog", "...", None))
         # if QT_CONFIG(tooltip)
-        self.label_2.setToolTip(QCoreApplication.translate("paramDialog", "Filename stub used for data filename", None))
+        self.label_2.setToolTip(
+            QCoreApplication.translate(
+                "paramDialog", "Filename stub used for data filename", None
+            )
+        )
         # endif // QT_CONFIG(tooltip)
         self.label_2.setText(
             QCoreApplication.translate(
@@ -239,32 +267,50 @@ class Ui_paramDialog:
         )
         # if QT_CONFIG(tooltip)
         self.userLineEdit.setToolTip(
-            QCoreApplication.translate("paramDialog", "Filename stub used for data filename", None)
+            QCoreApplication.translate(
+                "paramDialog", "Filename stub used for data filename", None
+            )
         )
         # endif // QT_CONFIG(tooltip)
         self.skipdataCheckBox.setText(
-            QCoreApplication.translate("paramDialog", "SkipData (Suppress output data file)", None)
+            QCoreApplication.translate(
+                "paramDialog", "SkipData (Suppress output data file)", None
+            )
         )
         self.overwriteCheckBox.setText(
-            QCoreApplication.translate("paramDialog", "Overwrite (Overwrite duplicate data file)", None)
+            QCoreApplication.translate(
+                "paramDialog", "Overwrite (Overwrite duplicate data file)", None
+            )
         )
         # if QT_CONFIG(tooltip)
         self.debugCheckBox.setToolTip("")
         # endif // QT_CONFIG(tooltip)
         self.debugCheckBox.setText(
             QCoreApplication.translate(
-                "paramDialog", "Debug (Write extra debugging  information to terminal and data file)", None
+                "paramDialog",
+                "Debug (Write extra debugging  information to terminal and data file)",
+                None,
             )
         )
         self.skipmediaCheckBox.setText(
-            QCoreApplication.translate("paramDialog", "SkipMedia (Disable playback of audio and video files)", None)
+            QCoreApplication.translate(
+                "paramDialog",
+                "SkipMedia (Disable playback of audio and video files)",
+                None,
+            )
         )
         self.fullscreenCheckBox.setText(
             QCoreApplication.translate(
-                "paramDialog", "FullScreen (Show FullScreen Ignoring Environment File Setttings)", None
+                "paramDialog",
+                "FullScreen (Show FullScreen Ignoring Environment File Setttings)",
+                None,
             )
         )
-        self.cancelPushButton.setText(QCoreApplication.translate("paramDialog", "Cancel", None))
-        self.startPushButton.setText(QCoreApplication.translate("paramDialog", "Start", None))
+        self.cancelPushButton.setText(
+            QCoreApplication.translate("paramDialog", "Cancel", None)
+        )
+        self.startPushButton.setText(
+            QCoreApplication.translate("paramDialog", "Start", None)
+        )
 
     # retranslateUi

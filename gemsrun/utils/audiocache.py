@@ -221,7 +221,9 @@ def find_playsound_files_in_database(db: Munch, media_path: str | Path) -> list[
     return sorted(sound_files)
 
 
-def find_playsound_files_for_view(db: Munch, view_id: int | str, media_path: str | Path) -> list[Path]:
+def find_playsound_files_for_view(
+    db: Munch, view_id: int | str, media_path: str | Path
+) -> list[Path]:
     """
     Find all audio files referenced in PlaySound actions for a specific view.
 
@@ -259,7 +261,9 @@ def find_playsound_files_for_view(db: Munch, view_id: int | str, media_path: str
     return sorted(sound_files)
 
 
-def preload_audio_files(files: list[Path], progress_callback: Callable[[int, int, str], None] | None = None) -> int:
+def preload_audio_files(
+    files: list[Path], progress_callback: Callable[[int, int, str], None] | None = None
+) -> int:
     """
     Preload a list of audio files by converting them to cached WAV files.
 

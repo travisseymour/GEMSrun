@@ -50,19 +50,35 @@ class ParamDialog(QDialog):
 
         # setup initial validations for text fields
 
-        self.ui.envLineEdit.setStyleSheet(NORMAL if self.ui.envLineEdit.text() else ERROR)
-        self.ui.userLineEdit.setStyleSheet(NORMAL if self.ui.userLineEdit.text() else ERROR)
+        self.ui.envLineEdit.setStyleSheet(
+            NORMAL if self.ui.envLineEdit.text() else ERROR
+        )
+        self.ui.userLineEdit.setStyleSheet(
+            NORMAL if self.ui.userLineEdit.text() else ERROR
+        )
 
         # create change handlers for text fields
-        self.ui.userLineEdit.textChanged.connect(partial(self.text_changing, self.ui.userLineEdit, "user"))
+        self.ui.userLineEdit.textChanged.connect(
+            partial(self.text_changing, self.ui.userLineEdit, "user")
+        )
 
         # create change handlers for checkboxes
 
-        self.ui.skipdataCheckBox.stateChanged.connect(partial(self.check_changing, "skipdata"))
-        self.ui.overwriteCheckBox.stateChanged.connect(partial(self.check_changing, "overwrite"))
-        self.ui.debugCheckBox.stateChanged.connect(partial(self.check_changing, "debug"))
-        self.ui.skipmediaCheckBox.stateChanged.connect(partial(self.check_changing, "skipmedia"))
-        self.ui.fullscreenCheckBox.stateChanged.connect(partial(self.check_changing, "fullscreen"))
+        self.ui.skipdataCheckBox.stateChanged.connect(
+            partial(self.check_changing, "skipdata")
+        )
+        self.ui.overwriteCheckBox.stateChanged.connect(
+            partial(self.check_changing, "overwrite")
+        )
+        self.ui.debugCheckBox.stateChanged.connect(
+            partial(self.check_changing, "debug")
+        )
+        self.ui.skipmediaCheckBox.stateChanged.connect(
+            partial(self.check_changing, "skipmedia")
+        )
+        self.ui.fullscreenCheckBox.stateChanged.connect(
+            partial(self.check_changing, "fullscreen")
+        )
 
         # dropdown of recent environment files
         self.ui.envLineEdit.hide()  # replace with dropdown
@@ -158,7 +174,11 @@ class ParamDialog(QDialog):
             env_str = str(env).strip()
             if env_str and env_str not in envs:
                 envs.append(env_str)
-        if self.params.fname and Path(self.params.fname).is_file() and self.params.fname not in envs:
+        if (
+            self.params.fname
+            and Path(self.params.fname).is_file()
+            and self.params.fname not in envs
+        ):
             envs.insert(0, self.params.fname)
         return envs[:10]
 

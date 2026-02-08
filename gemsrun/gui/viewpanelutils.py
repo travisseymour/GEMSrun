@@ -27,7 +27,9 @@ import gemsrun
 from gemsrun.utils.apputils import get_resource
 
 
-def pixmap_to_pointer(pixmap: QPixmap, width: int = 50, height: int = 50, keep_aspect_ratio: bool = True) -> QPixmap:
+def pixmap_to_pointer(
+    pixmap: QPixmap, width: int = 50, height: int = 50, keep_aspect_ratio: bool = True
+) -> QPixmap:
     """
     Takes a pixmap and creates a dragging icon with a little pointer in the upper left.
     returns a picture you can use to indicate something is being dragged.
@@ -35,7 +37,11 @@ def pixmap_to_pointer(pixmap: QPixmap, width: int = 50, height: int = 50, keep_a
     """
     return QPixmap(pixmap).scaled(
         QSize(width, height),
-        (Qt.AspectRatioMode.KeepAspectRatio if keep_aspect_ratio else Qt.AspectRatioMode.IgnoreAspectRatio),
+        (
+            Qt.AspectRatioMode.KeepAspectRatio
+            if keep_aspect_ratio
+            else Qt.AspectRatioMode.IgnoreAspectRatio
+        ),
     )
 
 
@@ -62,7 +68,8 @@ def drag_pixmap_with_hand(pixmap: QPixmap, hotspot: QPoint) -> QPixmap:
 
     try:
         show_hotspot = bool(
-            getattr(gemsrun, "SETTINGS", None) and gemsrun.SETTINGS.value("debug", defaultValue=False, type=bool)
+            getattr(gemsrun, "SETTINGS", None)
+            and gemsrun.SETTINGS.value("debug", defaultValue=False, type=bool)
         )
     except Exception:
         show_hotspot = False
@@ -103,8 +110,12 @@ def get_custom_cursors() -> dict:
     """
     cursors = {
         "arrow": _cursor_from_file("cursors/arrow_2_3.png", Qt.CursorShape.ArrowCursor),
-        "open_hand": _cursor_from_file("cursors/open_hand_17_15.png", Qt.CursorShape.OpenHandCursor),
-        "pointing_hand": _cursor_from_file("cursors/pointing_hand_13_9.png", Qt.CursorShape.PointingHandCursor),
+        "open_hand": _cursor_from_file(
+            "cursors/open_hand_17_15.png", Qt.CursorShape.OpenHandCursor
+        ),
+        "pointing_hand": _cursor_from_file(
+            "cursors/pointing_hand_13_9.png", Qt.CursorShape.PointingHandCursor
+        ),
     }
     try:
         overlay_path = Path(get_resource("images", "cursors/closed_hand_cropped.png"))

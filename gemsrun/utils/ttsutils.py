@@ -42,7 +42,9 @@ def render_tts_from_google(db: Munch) -> bool:
 
         # meta-note: this is pretty efficient, luckily, this is the only time we'll need ALL the actions at once!
         # get global and pocket actions
-        actions = list(chain(db.Global.GlobalActions.values(), db.Global.PocketActions.values()))
+        actions = list(
+            chain(db.Global.GlobalActions.values(), db.Global.PocketActions.values())
+        )
         # get all view-level actions
         for view in db.Views.values():
             actions.extend(list(view.Actions.values()))
@@ -53,7 +55,11 @@ def render_tts_from_google(db: Munch) -> bool:
                 actions.extend(list(_object.Actions.values()))
 
         for action in actions:
-            if action.Enabled and "SayText" in action.Action and "[" not in action.Action:
+            if (
+                action.Enabled
+                and "SayText" in action.Action
+                and "[" not in action.Action
+            ):
                 if match := say_pattern.search(string=action.Action):
                     speech = match.group().strip().replace('"', "")
                     speech_hash = gu.string_hash(speech)
@@ -64,7 +70,9 @@ def render_tts_from_google(db: Munch) -> bool:
                             tts.save(str(Path(tts_folder, speech_filename)))
                         except Exception as e:
                             tts_ok = False
-                            log.warning(f"Unable to pre-render tts media for action {action.Action}, {e}")
+                            log.warning(
+                                f"Unable to pre-render tts media for action {action.Action}, {e}"
+                            )
 
         return True
     except Exception as e:

@@ -68,7 +68,11 @@ def _pixmap_to_image(pm: QPixmap, target: QSize) -> QImage:
 
     # Ensure it is the right size; smooth scaling keeps results pleasant.
     if pm.size() != target:
-        pm = pm.scaled(target, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        pm = pm.scaled(
+            target,
+            Qt.AspectRatioMode.IgnoreAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
 
     img = pm.toImage()
     if img.format() != QImage.Format.Format_ARGB32_Premultiplied:
@@ -94,7 +98,9 @@ def _render_dissolve(before_img: QImage, after_img: QImage, t: float) -> QImage:
     return out
 
 
-def _render_wipe(before_img: QImage, after_img: QImage, t: float, direction: str) -> QImage:
+def _render_wipe(
+    before_img: QImage, after_img: QImage, t: float, direction: str
+) -> QImage:
     """
     direction: "left" means reveal from left edge to right.
                "right" means reveal from right edge to left.
@@ -148,7 +154,13 @@ class TransitionClip(QObject):
     frameChanged = Signal(QPixmap)
     finished = Signal()
 
-    def __init__(self, frames: list[QPixmap], duration_ms: int, fps: int, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        frames: list[QPixmap],
+        duration_ms: int,
+        fps: int,
+        parent: QObject | None = None,
+    ) -> None:
         super().__init__(parent)
         self._frames = frames
         self._duration_ms = max(0, int(duration_ms))
@@ -254,12 +266,18 @@ class TransitionFactory:
     ) -> TransitionClip:
         transition = (transition or "").strip().lower()
         if transition not in _SUPPORTED:
-            raise ValueError(f"Unsupported transition '{transition}'. Supported: {sorted(_SUPPORTED)}")
+            raise ValueError(
+                f"Unsupported transition '{transition}'. Supported: {sorted(_SUPPORTED)}"
+            )
 
         fps_i = self._fps if fps is None else max(1, int(fps))
         duration_ms = max(0, int(duration_ms))
 
-        size = target_size if target_size is not None else _choose_target_size(before, after)
+        size = (
+            target_size
+            if target_size is not None
+            else _choose_target_size(before, after)
+        )
         w, h = max(1, size.width()), max(1, size.height())
 
         # DPR: if either pixmap has DPR, preserve a sensible value (max).
@@ -278,11 +296,15 @@ class TransitionFactory:
 
         frames = self._lru_get(key)
         if frames is None:
-            frames = self._render_frames(before, after, transition, duration_ms, fps_i, QSize(w, h), dpr)
+            frames = self._render_frames(
+                before, after, transition, duration_ms, fps_i, QSize(w, h), dpr
+            )
             self._lru_put(key, frames)
 
         # Clip is a lightweight player wrapper around cached frames.
-        return TransitionClip(frames=frames, duration_ms=duration_ms, fps=fps_i, parent=parent)
+        return TransitionClip(
+            frames=frames, duration_ms=duration_ms, fps=fps_i, parent=parent
+        )
 
     def _lru_get(self, key: _ClipKey) -> list[QPixmap] | None:
         frames = self._lru.get(key)
@@ -314,7 +336,9 @@ class TransitionFactory:
         n = _frame_count(duration_ms, fps)
 
         if transition == "dissolve":
-            renderer: Callable[[float], QImage] = partial(_render_dissolve, before_img, after_img)
+            renderer: Callable[[float], QImage] = partial(
+                _render_dissolve, before_img, after_img
+            )
         elif transition == "wipe-left":
             renderer = partial(_render_wipe, before_img, after_img, direction="left")
         else:  # "wipe-right"
@@ -336,7 +360,9 @@ class TransitionFactory:
 _default_factory = TransitionFactory(cache_size=10, fps=30)
 
 
-def make_transition(before: QPixmap, after: QPixmap, transition: str, duration: int) -> TransitionClip:
+def make_transition(
+    before: QPixmap, after: QPixmap, transition: str, duration: int
+) -> TransitionClip:
     """
     Requested top-level API.
     duration is milliseconds.
@@ -347,7 +373,14 @@ def make_transition(before: QPixmap, after: QPixmap, transition: str, duration: 
 if __name__ == "__main__":
     import sys
 
-    from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+    from PySide6.QtWidgets import (
+        QApplication,
+        QHBoxLayout,
+        QLabel,
+        QPushButton,
+        QVBoxLayout,
+        QWidget,
+    )
 
     app = QApplication(sys.argv)
 

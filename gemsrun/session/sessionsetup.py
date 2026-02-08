@@ -27,7 +27,12 @@ import yaml
 
 from gemsrun import app_short_name, log
 from gemsrun.session.version import __version__
-from gemsrun.utils.gemsutils import check_connectivity, create_temporary_folder, func_name, get_image_dims
+from gemsrun.utils.gemsutils import (
+    check_connectivity,
+    create_temporary_folder,
+    func_name,
+    get_image_dims,
+)
 from gemsrun.utils.ttsutils import find_tts_folder, render_tts_from_google
 
 
@@ -47,10 +52,14 @@ def setup_data_logging(user: str, debug: bool) -> Path:
         log_format = "{message}"
 
     # setup logfile sink
-    data_path = Path.home() / "Documents" / "GEMS" / "Data"  # TODO: Add Option To Move This
+    data_path = (
+        Path.home() / "Documents" / "GEMS" / "Data"
+    )  # TODO: Add Option To Move This
     data_path.mkdir(parents=True, exist_ok=True)
     dt = datetime.strftime(datetime.now(), "%m%d%y_%H%M%S")
-    log_file = Path(data_path, f"{app_short_name}_v{__version__.replace('.', '')}_{user}_{dt}.txt")
+    log_file = Path(
+        data_path, f"{app_short_name}_v{__version__.replace('.', '')}_{user}_{dt}.txt"
+    )
 
     log.remove()
 
@@ -162,7 +171,9 @@ def setup_session(args: Munch) -> Munch:
             f"The media folder ({media_path}) is missing media required for "
             f"the GEMS environment ({args.fname}):\n{missing_media}"
         )
-        QMessageBox.critical(None, "Some Media Files Are Missing!", msg, QMessageBox.StandardButton.Ok)
+        QMessageBox.critical(
+            None, "Some Media Files Are Missing!", msg, QMessageBox.StandardButton.Ok
+        )
         return fail
 
     # Determine whether tts is going to work
@@ -177,7 +188,9 @@ def setup_session(args: Munch) -> Munch:
         "https://www.duckduckgo.com",
     ]
     if check_connectivity(random.choice(urls)):
-        database.Global.Options.TTSFolder = find_tts_folder(media_folder=media_path, temp_folder=temp_folder)
+        database.Global.Options.TTSFolder = find_tts_folder(
+            media_folder=media_path, temp_folder=temp_folder
+        )
         if database.Global.Options.Preloadresources:
             try:
                 database.Global.Options.TTSEnabled = render_tts_from_google(db=database)
@@ -187,7 +200,12 @@ def setup_session(args: Munch) -> Munch:
                     f"Unable to use Google's online Text-To-Speech service to render required phrases used in "
                     f"the environment ({e}).\nThe environment will still run, but TTS will be disabled."
                 )
-                QMessageBox.warning(None, "Problem With Online TTS Service", msg, QMessageBox.StandardButton.Ok)
+                QMessageBox.warning(
+                    None,
+                    "Problem With Online TTS Service",
+                    msg,
+                    QMessageBox.StandardButton.Ok,
+                )
         else:
             database.Global.Options.TTSEnabled = True
     else:
@@ -195,7 +213,9 @@ def setup_session(args: Munch) -> Munch:
         database.Global.Options.TTSFolder = None
 
     # Add some stuff to option, all of which will be exited if the db is saved back out!
-    database.Global.Options.EnvDims = get_initial_view_size(db=database, media_folder=media_path)
+    database.Global.Options.EnvDims = get_initial_view_size(
+        db=database, media_folder=media_path
+    )
     database.Global.Options.PlayMedia = not args.skipmedia
     database.Global.Options.SaveData = not args.skipdata
     database.Global.Options.User = args.user
@@ -251,7 +271,9 @@ def verify_media_folder(db_path: Path) -> Path:
             f"There does not appear to be a folder called {str(media_folder)} in the same location as {str(db_path)}!"
         )
     if not list(media_folder.glob("*.*")):
-        raise OSError(f"This environment's media folder {str(media_folder)} appears to be empty!")
+        raise OSError(
+            f"This environment's media folder {str(media_folder)} appears to be empty!"
+        )
     return media_folder
 
 
@@ -265,5 +287,7 @@ def check_media(db: Munch, media_folder: Path) -> tuple:
     image_files += [view.Overlay for view in db.Views.values()]
     image_files += [db.Global.Options.Globaloverlay]
     image_files = [img for img in image_files if img]
-    missing = [afile for afile in image_files if not Path(media_folder, afile).is_file()]
+    missing = [
+        afile for afile in image_files if not Path(media_folder, afile).is_file()
+    ]
     return tuple(set(missing))
