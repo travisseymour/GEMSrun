@@ -116,7 +116,6 @@ def run(
         None, "--fullscreen/--no-fullscreen", "-F", help="Launch runner in fullscreen."
     ),
 ):
-    log.warning(f">>>>>>>>>>>>>{fname=}")
     cli_fname = fname or env_path or ""
     cli_user = user or user_arg
 
