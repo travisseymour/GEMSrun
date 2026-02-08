@@ -6,7 +6,7 @@ import time
 
 from munch import Munch
 from PySide6.QtCore import QCoreApplication, QSettings, Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 import typer
 
@@ -15,10 +15,7 @@ from gemsrun import log
 from gemsrun.gui import mainwindow
 from gemsrun.gui.parawindow import ParamDialog
 from gemsrun.session import sessionsetup as ssetup
-from gemsrun.utils import audiocache
-
-# Avoid forcing QT multimedia backend. Let Qt auto-detect best available plugins.
-# If users need to override, they can set QT_MEDIA_BACKEND in their environment before launch.
+from gemsrun.utils import apputils, audiocache
 
 app = typer.Typer(add_completion=False, help="GEMSrun command line interface.")
 
@@ -141,6 +138,16 @@ def run(
     QCoreApplication.setOrganizationName("TravisSeymour")
     QCoreApplication.setOrganizationDomain("travisseymour.com")
     QCoreApplication.setApplicationName("GEMSrun")
+
+    # Set application icon with multiple sizes for different contexts
+    app_icon = QIcon()
+    for size in [16, 24, 32, 48, 64, 128, 256, 512]:
+        try:
+            icon_path = apputils.get_resource("images", "appicon", f"icon_{size}.png")
+            app_icon.addFile(str(icon_path))
+        except FileNotFoundError:
+            pass
+    gemsrun.APPLICATION.setWindowIcon(app_icon)
 
     settings = gemsrun.SETTINGS
     args = Munch(
