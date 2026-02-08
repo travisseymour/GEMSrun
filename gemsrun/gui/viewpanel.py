@@ -1274,6 +1274,16 @@ class ViewPanel(QWidget):
         # return the updated text
         return newtext
 
+    def _smart_compare(self, val1, val2) -> bool:
+        """
+        Smart comparison: if both values can be converted to floats, compare numerically.
+        Otherwise, compare as strings.
+        """
+        try:
+            return float(val1) == float(val2)
+        except (ValueError, TypeError):
+            return str(val1) == str(val2)
+
     def VarValueIs(self, variable: str, value: str) -> bool:
         # sourcery skip: remove-unnecessary-cast
         """
@@ -1282,7 +1292,7 @@ class ViewPanel(QWidget):
         :scope viewobjectglobalpocket
         :mtype condition
         """
-        return variable in self.db.Variables and str(self.db.Variables[variable]) == str(value)
+        return variable in self.db.Variables and self._smart_compare(self.db.Variables[variable], value)
 
     def VarValueIsNot(self, variable: str, value: str) -> bool:
         """
@@ -1293,7 +1303,7 @@ class ViewPanel(QWidget):
         """
         return (
             variable not in self.db.Variables
-            or str(self.db.Variables[variable]) != value
+            or not self._smart_compare(self.db.Variables[variable], value)
         )
 
     def VarExists(self, variable: str) -> bool:
