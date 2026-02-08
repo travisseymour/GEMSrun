@@ -23,6 +23,8 @@ from itertools import chain
 from pathlib import Path
 import re
 import string
+import subprocess
+import sys
 import tempfile
 import textwrap
 import timeit
@@ -113,6 +115,7 @@ VALID_ACTIONS = [
     "NavTop",
     "NavBottom",
     "TextBoxHTML",
+    "RunProgram",
 ]
 
 
@@ -2273,6 +2276,67 @@ class ViewPanel(QWidget):
                       Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         webbrowser.open(url)
+
+    def RunProgram(self, application: str, parameters: str = ''):
+        """
+        This action launches an external application specified by <b><i>Application</i></b>.
+        Optional <b><i>Parameters</i></b> can be passed to the application as command-line arguments.
+        :scope viewobjectglobalpocket
+        :mtype action
+        """
+        log.info(dict(Kind='Action', Type='RunProgram', View=self.View.Name, **gu.func_params(), Target=None,
+                      Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+
+        if not application:
+            log.warning("RunProgram called with empty application path.")
+            return
+
+        def build_command(app_path: str) -> list[str]:
+            """Build the command list based on platform."""
+            if sys.platform == 'darwin':  # macOS
+                if parameters:
+                    return ['open', '-a', app_path, '--args'] + parameters.split()
+                else:
+                    return ['open', '-a', app_path]
+            elif sys.platform == 'win32':  # Windows
+                if parameters:
+                    return [app_path] + parameters.split()
+                else:
+                    return [app_path]
+            else:  # Linux and other Unix-like systems
+                # Run shell scripts through bash to handle missing/invalid shebangs
+                is_shell_script = app_path.endswith(('.sh', '.bash'))
+                if is_shell_script:
+                    if parameters:
+                        return ['bash', app_path] + parameters.split()
+                    else:
+                        return ['bash', app_path]
+                else:
+                    if parameters:
+                        return [app_path] + parameters.split()
+                    else:
+                        return [app_path]
+
+        try:
+            # Launch the process without waiting for it to complete
+            cmd = build_command(application)
+            subprocess.Popen(cmd, start_new_session=True)
+            log.debug(f"RunProgram launched: {application} with parameters: {parameters}")
+
+        except FileNotFoundError:
+            # Check if the application exists in the media folder
+            media_path = Path(self.options.MediaPath) / application
+            if media_path.is_file():
+                try:
+                    cmd = build_command(str(media_path))
+                    subprocess.Popen(cmd, start_new_session=True)
+                    log.debug(f"RunProgram launched from media folder: {media_path} with parameters: {parameters}")
+                except Exception as e:
+                    log.error(f"RunProgram: Failed to launch {media_path}: {e}")
+            else:
+                log.error(f"RunProgram: Application not found: {application}")
+        except Exception as e:
+            log.error(f"RunProgram: Failed to launch {application}: {e}")
 
     def TextDialog(self, message: str, title: str = '', dialog_kind: str = 'info'):
         """
