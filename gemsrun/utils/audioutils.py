@@ -25,10 +25,14 @@ from typing import Any
 # Suppress pygame welcome message before importing
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
+from pygame import mixer as pygame_mixer  # For music module access
 import pygame.mixer as mixer
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from gemsrun import log
+
+# Track current background music file for logging
+_current_background_music: str | None = None
 
 """
 Cross-platform audio utilities for GEMSrun using pygame.mixer
@@ -287,3 +291,109 @@ def get_audio_backend_info() -> dict[str, Any]:
         "mixer_initialized": mixer.get_init() is not None if MIXER_AVAILABLE else False,
         "num_channels": mixer.get_num_channels() if MIXER_AVAILABLE else 0,
     }
+
+
+# ============================================================================
+# Background Music Functions (using pygame.mixer.music)
+# ============================================================================
+# pygame.mixer.music is separate from mixer.Sound channels:
+# - Only one music stream can play at a time
+# - Designed for streaming longer audio files
+# - Not affected by mixer.Sound operations (StopAllSounds, etc.)
+# - Automatically cleaned up when mixer.quit() is called
+# ============================================================================
+
+
+def play_background_music(
+    sound_file: str, volume: float = 1.0, loop: bool = False
+) -> bool:
+    """
+    Play background music using pygame.mixer.music.
+
+    Only one background music stream can play at a time. If music is already
+    playing, it will be stopped and the new music will start.
+
+    Args:
+        sound_file: Path to the audio file
+        volume: Volume level (0.0 to 1.0)
+        loop: If True, loop the music indefinitely
+
+    Returns:
+        True if playback started successfully, False otherwise
+    """
+    global _current_background_music
+
+    if not MIXER_AVAILABLE:
+        log.error("pygame.mixer not available for background music")
+        return False
+
+    try:
+        # Stop any currently playing background music
+        if pygame_mixer.music.get_busy():
+            pygame_mixer.music.stop()
+            log.debug(f"Stopped previous background music: {_current_background_music}")
+
+        # Load and play the new music
+        pygame_mixer.music.load(sound_file)
+        pygame_mixer.music.set_volume(max(0.0, min(1.0, volume)))
+
+        # -1 for infinite loop, 0 for play once
+        loops = -1 if loop else 0
+        pygame_mixer.music.play(loops=loops)
+
+        _current_background_music = sound_file
+        log.info(
+            f"Playing background music: {sound_file}, volume={volume}, loop={loop}"
+        )
+        return True
+
+    except Exception as e:
+        log.error(f"Failed to play background music {sound_file}: {e}")
+        return False
+
+
+def stop_background_music() -> bool:
+    """
+    Stop the currently playing background music.
+
+    Returns:
+        True if music was stopped, False if no music was playing or error occurred
+    """
+    global _current_background_music
+
+    if not MIXER_AVAILABLE:
+        log.error("pygame.mixer not available")
+        return False
+
+    try:
+        if pygame_mixer.music.get_busy():
+            pygame_mixer.music.stop()
+            log.info(f"Stopped background music: {_current_background_music}")
+            _current_background_music = None
+            return True
+        else:
+            log.debug("No background music was playing")
+            return False
+
+    except Exception as e:
+        log.error(f"Failed to stop background music: {e}")
+        return False
+
+
+def is_background_music_playing() -> bool:
+    """Check if background music is currently playing."""
+    if not MIXER_AVAILABLE:
+        return False
+    try:
+        return pygame_mixer.music.get_busy()
+    except Exception:
+        return False
+
+
+def set_background_music_volume(volume: float) -> None:
+    """Set the volume for background music (0.0 to 1.0)."""
+    if MIXER_AVAILABLE:
+        try:
+            pygame_mixer.music.set_volume(max(0.0, min(1.0, volume)))
+        except Exception as e:
+            log.error(f"Failed to set background music volume: {e}")

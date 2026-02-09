@@ -60,7 +60,7 @@ from gemsrun.gui.viewpanelobjects import (
     ViewPocketObject,
 )
 from gemsrun.gui.viewpanelutils import get_custom_cursors
-from gemsrun.utils import audiocache, gemsutils as gu
+from gemsrun.utils import audiocache, audioutils, gemsutils as gu
 from gemsrun.utils.apputils import get_resource
 from gemsrun.utils.safestrfunc import func_str_parts, get_param, is_safe_value
 
@@ -95,6 +95,8 @@ VALID_ACTIONS = [
     "PlaySound",
     "StopSound",
     "StopAllSounds",
+    "PlayBackgroundMusic",
+    "StopBackgroundMusic",
     "PlayVideo",
     "PlayVideoWithin",
     "StopVideo",
@@ -303,24 +305,13 @@ class ViewPanel(QWidget):
         from PySide6.QtCore import QCoreApplication
         from PySide6.QtWidgets import QFrame
 
-        log.debug(
-            f"=== VIEW-START AUDIO CACHE: Beginning pre-view audio caching for view {self.view_id} ==="
-        )
-
         # Find audio files for this view
         audio_files = audiocache.find_playsound_files_for_view(
             self.db, self.view_id, self.options.MediaPath
         )
 
         if not audio_files:
-            log.debug(
-                f"=== VIEW-START AUDIO CACHE: No compressed audio files found for view {self.view_id} ==="
-            )
             return  # Nothing to preload
-
-        log.debug(
-            f"=== VIEW-START AUDIO CACHE: Found {len(audio_files)} compressed audio file(s) for view {self.view_id} ==="
-        )
 
         # Parse StageColor from options (format: "['Black',0,0,0,255]" or similar)
         stage_color = "black"
@@ -368,10 +359,6 @@ class ViewPanel(QWidget):
         # Remove overlay
         overlay.hide()
         overlay.deleteLater()
-
-        log.debug(
-            f"=== VIEW-START AUDIO CACHE: Completed caching {len(audio_files)} audio file(s) for view {self.view_id} ==="
-        )
 
     def geom_x_adjust(self, value: int | float) -> int:
         return self.view_top_left_adjustment[0] + geom_x_adjust(
@@ -809,9 +796,6 @@ class ViewPanel(QWidget):
 
     def start_timers(self):
         """Launch timers for any view or env actions with timed triggers"""
-        log.debug(
-            f"=== start_timers called for view {self.view_id} at vt+ {timeit.default_timer() - self.view_start_time:.3f}s ==="
-        )
         # first check any global timers
         for action in chain(
             self.db.Global.GlobalActions.values(), self.View.Actions.values()
@@ -2118,6 +2102,65 @@ class ViewPanel(QWidget):
                 sound_player.stop()
             except Exception as e:
                 log.error(f'Error stopping audio playback: {e}')
+
+    def PlayBackgroundMusic(self, sound_file: str, volume: float = 1.0, loop: bool = False):
+        """
+        This action plays <b><i>SoundFile</i></b> as background music at the specified
+        <b><i>Volume</i></b>. Only one background music stream can play at a time. If background
+        music is already playing, it will be stopped and the new music will start. Background
+        music persists across view changes and is not affected by StopAllSounds.
+        If <b><i>Loop</i></b> is True, the music will loop indefinitely.
+        :scope viewobjectglobalpocket
+        :mtype action
+        """
+        if "PlayMedia" in self.db.Global.Options and not self.db.Global.Options.PlayMedia:
+            log.warning("Media playback is not enabled.")
+            return
+
+        sound_path = Path(sound_file) if Path(sound_file).is_file() else Path(self.options.MediaPath, sound_file)
+        log.info(f"Requesting background music playback: {sound_path}")
+
+        if not sound_path.exists():
+            log.error(f"Background music file does not exist: {sound_path}")
+            log.info(dict(Kind='Action', Type='PlayBackgroundMusic', View=self.View.Name, **gu.func_params(),
+                          Target=None, Result='Invalid|FileNotFound', TimeTime=self.get_task_elapsed(),
+                          ViewTime=self.view_elapsed()))
+            return
+
+        log.info(dict(Kind='Action', Type='PlayBackgroundMusic', View=self.View.Name, **gu.func_params(),
+                      Target=None, Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+
+        # Check cache for pre-converted WAV version of compressed audio
+        playback_path = audiocache.get_playback_path(sound_path)
+        if playback_path != sound_path:
+            log.debug(f"Using cached WAV for background music: {playback_path}")
+
+        try:
+            audioutils.play_background_music(
+                sound_file=str(playback_path.resolve()),
+                volume=self.options.Volume * volume,
+                loop=loop
+            )
+        except Exception as e:
+            log.error(f'Error playing background music {sound_file}: {e}')
+
+    def StopBackgroundMusic(self):
+        """
+        This action stops the currently playing background music if any.
+        :scope viewobjectglobalpocket
+        :mtype action
+        """
+        if "PlayMedia" in self.db.Global.Options and not self.db.Global.Options.PlayMedia:
+            log.warning("Media playback is not enabled.")
+            return
+
+        log.info(dict(Kind='Action', Type='StopBackgroundMusic', View=self.View.Name, **gu.func_params(),
+                      Target=None, Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+
+        try:
+            audioutils.stop_background_music()
+        except Exception as e:
+            log.error(f'Error stopping background music: {e}')
 
     def PlayVideo(self, video_file: str, start: int = 0, left: int = 0, top: int = 0, volume: float = 1.0, loop: bool = False):
         """

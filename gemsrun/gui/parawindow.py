@@ -21,12 +21,25 @@ from pathlib import Path
 
 from munch import Munch
 from PySide6.QtCore import QSettings
-from PySide6.QtWidgets import QComboBox, QDialog, QFileDialog, QMessageBox
+from PySide6.QtGui import QFontMetrics, QResizeEvent
+from PySide6.QtWidgets import QComboBox, QDialog, QFileDialog, QMessageBox, QSizePolicy
 
 from gemsrun.gui.paramdialog import Ui_paramDialog
+from gemsrun.session.version import __version__
 
 ERROR = "background : red;"
 NORMAL = ""
+
+
+def shorten_path(path: str, max_length: int) -> str:
+    """Shorten a path by truncating the middle if it exceeds max_length."""
+    if max_length <= 0 or len(path) <= max_length:
+        return path
+    # Keep the beginning and end, insert ... in the middle
+    keep_chars = (max_length - 3) // 2  # 3 for "..."
+    if keep_chars <= 0:
+        return path
+    return f"{path[:keep_chars]}...{path[-keep_chars:]}"
 
 
 # {'fname': 'myenvironment.yaml', 'user': 'User1', 'skipdata': True, 'overwrite': True,
@@ -39,6 +52,8 @@ class ParamDialog(QDialog):
         self.ok = False
         self.ui = Ui_paramDialog()
         self.ui.setupUi(self)
+        self.setWindowTitle(f"GEMSrun v{__version__}")
+        self.resize(1200, 400)
         self.params = params
 
         self.settings = QSettings()
@@ -83,12 +98,17 @@ class ParamDialog(QDialog):
         # dropdown of recent environment files
         self.ui.envLineEdit.hide()  # replace with dropdown
         self.env_history_combo = QComboBox(self)
-        self.env_history_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        self.env_history_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.env_history_combo.setSizeAdjustPolicy(
+            QComboBox.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.env_history_combo.setMinimumContentsLength(40)
         self.env_history_combo.setInsertPolicy(QComboBox.NoInsert)
-        self.env_history_combo.setToolTip("Recently used GEMS environment files")
-        self.env_history_combo.addItems(self.recent_envs)
         self.env_history_combo.currentTextChanged.connect(self._env_selected)
-        self.ui.horizontalLayout_4.insertWidget(2, self.env_history_combo)
+        self._populate_env_combo()
+        self.ui.horizontalLayout_4.insertWidget(
+            2, self.env_history_combo, 1
+        )  # stretch factor of 1
 
         # Enter orig values into each widget
 
@@ -182,22 +202,51 @@ class ParamDialog(QDialog):
             envs.insert(0, self.params.fname)
         return envs[:10]
 
-    def _set_env_from_history(self, text: str):
-        self.env_history_combo.blockSignals(True)
-        if text:
-            index = self.env_history_combo.findText(text)
-            if index >= 0:
-                self.env_history_combo.setCurrentIndex(index)
-        self.env_history_combo.blockSignals(False)
-        self.params["fname"] = text
-        self._update_env_style(text)
+    def _calc_max_path_chars(self) -> int:
+        """Calculate max characters that fit in the combo box based on its current width."""
+        combo_width = self.env_history_combo.width()
+        # Account for dropdown button and padding (approximately 40 pixels)
+        available_width = combo_width - 40
+        if available_width <= 0:
+            return 60  # Default fallback
+        # Use font metrics to estimate characters that fit
+        fm = QFontMetrics(self.env_history_combo.font())
+        avg_char_width = fm.averageCharWidth()
+        if avg_char_width <= 0:
+            return 60
+        return max(20, available_width // avg_char_width)
 
-    def _env_selected(self, env_path: str):
-        env_path = (env_path or "").strip()
-        self.params["fname"] = env_path
-        self._update_env_style(env_path)
-        if env_path and self.env_history_combo.findText(env_path) == -1:
-            self.env_history_combo.addItem(env_path)
+    def _populate_env_combo(self):
+        """Populate the combo box with shortened display text and full path as data."""
+        current_index = self.env_history_combo.currentIndex()
+        max_chars = self._calc_max_path_chars()
+        self.env_history_combo.blockSignals(True)
+        self.env_history_combo.clear()
+        for env_path in self.recent_envs:
+            self.env_history_combo.addItem(shorten_path(env_path, max_chars), env_path)
+        if current_index >= 0 and current_index < self.env_history_combo.count():
+            self.env_history_combo.setCurrentIndex(current_index)
+        self.env_history_combo.blockSignals(False)
+
+    def _set_env_from_history(self, full_path: str):
+        self.env_history_combo.blockSignals(True)
+        if full_path:
+            # Find by item data (full path)
+            for i in range(self.env_history_combo.count()):
+                if self.env_history_combo.itemData(i) == full_path:
+                    self.env_history_combo.setCurrentIndex(i)
+                    break
+        self.env_history_combo.blockSignals(False)
+        self.params["fname"] = full_path
+        self._update_env_style(full_path)
+        self._update_env_tooltip(full_path)
+
+    def _env_selected(self, display_text: str):
+        # Get the full path from item data
+        full_path = self.env_history_combo.currentData() or ""
+        self.params["fname"] = full_path
+        self._update_env_style(full_path)
+        self._update_env_tooltip(full_path)
 
     def _add_recent_env(self, env_path: str):
         env_path = str(env_path).strip()
@@ -205,11 +254,14 @@ class ParamDialog(QDialog):
             return
         envs = [env_path] + [env for env in self.recent_envs if env != env_path]
         self.recent_envs = envs[:10]
-        self.env_history_combo.blockSignals(True)
-        self.env_history_combo.clear()
-        self.env_history_combo.addItems(self.recent_envs)
-        self.env_history_combo.blockSignals(False)
+        self._populate_env_combo()
         self._set_env_from_history(env_path)
+
+    def _update_env_tooltip(self, full_path: str):
+        """Update the combo box tooltip to show the full path."""
+        self.env_history_combo.setToolTip(
+            full_path if full_path else "Recently used GEMS environment files"
+        )
 
     def _persist_recent_envs(self):
         self.settings.setValue("recent_env_paths", self.recent_envs)
@@ -219,3 +271,9 @@ class ParamDialog(QDialog):
             self.env_history_combo.setStyleSheet(NORMAL)
         else:
             self.env_history_combo.setStyleSheet(ERROR)
+
+    def resizeEvent(self, event: QResizeEvent):
+        """Update path display when dialog is resized."""
+        super().resizeEvent(event)
+        # Refresh combo box display with new width-appropriate shortening
+        self._populate_env_combo()
