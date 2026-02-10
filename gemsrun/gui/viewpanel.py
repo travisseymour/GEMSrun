@@ -85,6 +85,8 @@ VALID_TRIGGERS = ["ViewTimePassed", "TotalTimePassed"]
 VALID_ACTIONS = [
     "SetVariable",
     "DelVariable",
+    "VarIncrease",
+    "VarDecrease",
     "ClearKeyBuffer",
     "TextBox",
     "ShowObject",
@@ -1650,6 +1652,70 @@ class ViewPanel(QWidget):
         except KeyError:
             log.info(dict(Kind='Action', Type='SetVariable', View=self.View.Name,
                           **gu.func_params(), Target=None, Result='Invalid|NoSuchVarExists',
+                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+
+    def VarIncrease(self, variable: str):
+        """
+        This action increases the value of <b><i>Variable</i></b> by 1.
+        If the variable does not exist or has a non-numeric value, it will be created and set to 1.
+        :scope viewobjectglobalpocket
+        :mtype action
+        """
+        log.info(dict(Kind='Action', Type='VarIncrease', View=self.View.Name,
+                      **gu.func_params(), Target=None, Result='Valid',
+                      TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+        try:
+            if variable in self.db.Variables:
+                current_value = self.db.Variables[variable]
+                try:
+                    numeric_value = float(current_value)
+                    # Keep as int if it was an int
+                    if numeric_value == int(numeric_value):
+                        self.db.Variables[variable] = str(int(numeric_value) + 1)
+                    else:
+                        self.db.Variables[variable] = str(numeric_value + 1)
+                except (ValueError, TypeError):
+                    # Non-numeric value, set to 1
+                    self.db.Variables[variable] = "1"
+            else:
+                # Variable doesn't exist, create and set to 1
+                self.db.Variables[variable] = "1"
+            log.debug(f'CURRENT VARS:{self.db.Variables}')
+        except Exception as e:
+            log.info(dict(Kind='Action', Type='VarIncrease', View=self.View.Name,
+                          **gu.func_params(), Target=None, Result=f'Invalid|{str(e)}',
+                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+
+    def VarDecrease(self, variable: str):
+        """
+        This action decreases the value of <b><i>Variable</i></b> by 1.
+        If the variable does not exist or has a non-numeric value, it will be created and set to 0.
+        :scope viewobjectglobalpocket
+        :mtype action
+        """
+        log.info(dict(Kind='Action', Type='VarDecrease', View=self.View.Name,
+                      **gu.func_params(), Target=None, Result='Valid',
+                      TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+        try:
+            if variable in self.db.Variables:
+                current_value = self.db.Variables[variable]
+                try:
+                    numeric_value = float(current_value)
+                    # Keep as int if it was an int
+                    if numeric_value == int(numeric_value):
+                        self.db.Variables[variable] = str(int(numeric_value) - 1)
+                    else:
+                        self.db.Variables[variable] = str(numeric_value - 1)
+                except (ValueError, TypeError):
+                    # Non-numeric value, set to 0
+                    self.db.Variables[variable] = "0"
+            else:
+                # Variable doesn't exist, create and set to 0
+                self.db.Variables[variable] = "0"
+            log.debug(f'CURRENT VARS:{self.db.Variables}')
+        except Exception as e:
+            log.info(dict(Kind='Action', Type='VarDecrease', View=self.View.Name,
+                          **gu.func_params(), Target=None, Result=f'Invalid|{str(e)}',
                           TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
     def TextBox(self, message: str, left: int, top: int, duration: float, fgcolor: list, bgcolor: list,
