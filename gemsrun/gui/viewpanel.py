@@ -120,6 +120,7 @@ VALID_ACTIONS = [
     "NavBottom",
     "TextBoxHTML",
     "RunProgram",
+    "ChangeViewImages",
 ]
 
 
@@ -2074,6 +2075,48 @@ class ViewPanel(QWidget):
         log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
                       Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
         do_portal()
+
+    def ChangeViewImages(self, view_id: int, foreground: str = '', background: str = ''):
+        """
+        This action changes the Foreground and/or Background images for the specified view.
+        Only valid image file paths will be applied. This is intended to alter images for a
+        view the user may travel to subsequently - if the specified view is the current view,
+        no refresh occurs.
+
+        :scope viewobjectglobalpocket
+        :mtype action
+        """
+        if str(view_id) not in self.db.Views:
+            log.info(dict(Kind='Action', Type='ChangeViewImages', View=self.View.Name, **gu.func_params(),
+                          Target=None, Result='Invalid|ViewDoesNotExist',
+                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            return
+
+        target_view = self.db.Views[str(view_id)]
+        changes_made = []
+
+        # Check and apply foreground if valid
+        if foreground:
+            fg_path = Path(foreground) if Path(foreground).is_file() else Path(self.options.MediaPath, foreground)
+            if fg_path.exists() and fg_path.is_file():
+                target_view.Foreground = foreground
+                changes_made.append(f'Foreground={foreground}')
+
+        # Check and apply background if valid
+        if background:
+            bg_path = Path(background) if Path(background).is_file() else Path(self.options.MediaPath, background)
+            if bg_path.exists() and bg_path.is_file():
+                target_view.Background = background
+                changes_made.append(f'Background={background}')
+
+        if changes_made:
+            log.info(dict(Kind='Action', Type='ChangeViewImages', View=self.View.Name, **gu.func_params(),
+                          Target=f'View{view_id}', Result=f'Valid|{",".join(changes_made)}',
+                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+        else:
+            log.info(dict(Kind='Action', Type='ChangeViewImages', View=self.View.Name, **gu.func_params(),
+                          Target=f'View{view_id}', Result='Valid|NoChanges',
+                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
     def PlaySound(self, sound_file: str, asynchronous: bool = True, volume: float = 1.0, loop: bool = False):
         """
