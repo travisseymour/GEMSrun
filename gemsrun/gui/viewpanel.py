@@ -1376,9 +1376,11 @@ class ViewPanel(QWidget):
             varname = match.group(1)
             full = match.group(0)
             try:
-                newtext = newtext.replace(full, self.db.Variables.get(varname, 'Unknown'))
+                value = self.db.Variables.get(varname, 'Unknown')
+                newtext = newtext.replace(full, str(value))
             except Exception as e:
-                log.error(e)
+                log.error(f"var_in_text error replacing ${varname}$: {e}")
+                newtext = newtext.replace(full, 'Unknown')
 
         # Then, handle legacy [VarName] syntax for backwards compatibility
         bracket_pattern = re.compile(r'(\[)([^\]]+)(\])')
@@ -1393,9 +1395,11 @@ class ViewPanel(QWidget):
         for left, varname, right in speclist:
             full = left + varname + right
             try:
-                newtext = newtext.replace(full, self.db.Variables.get(varname, 'Unknown'))
+                value = self.db.Variables.get(varname, 'Unknown')
+                newtext = newtext.replace(full, str(value))
             except Exception as e:
-                log.error(e)
+                log.error(f"var_in_text error replacing [{varname}]: {e}")
+                newtext = newtext.replace(full, 'Unknown')
 
         # return the updated text
         return newtext
