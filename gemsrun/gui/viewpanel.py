@@ -1359,23 +1359,37 @@ class ViewPanel(QWidget):
     def var_in_text(self, thetext: str) -> str:
         # sourcery skip: remove-unnecessary-cast
         """
-        Search for variable specifiers in input string, e.g., [FirstName].
+        Search for variable specifiers in input string.
+        Supports two syntaxes:
+          - $VarName$ : Preferred syntax, works in all contexts including action parameters
+          - [VarName] : Legacy syntax, may not work in action parameters due to bracket parsing
         If the variable currently is set, specifier is replaced by contents.
-        Otherwise, it is replaced by '???'
+        Otherwise, it is replaced by 'Unknown'
         :param thetext: text to be scanned
         :return: updated version of thetext
         """
-        pp = re.compile(r'(\[)([^\]]+)(\])')  # extract all variable specifiers
+        newtext = str(thetext)
 
-        speclist = pp.findall(thetext)  # list of all specifiers
+        # First, handle $VarName$ syntax (preferred, works in action parameters)
+        dollar_pattern = re.compile(r'\$([A-Za-z_][A-Za-z0-9_]*)\$')
+        for match in dollar_pattern.finditer(thetext):
+            varname = match.group(1)
+            full = match.group(0)
+            try:
+                newtext = newtext.replace(full, self.db.Variables.get(varname, 'Unknown'))
+            except Exception as e:
+                log.error(e)
 
-        # if empty, return orig text
+        # Then, handle legacy [VarName] syntax for backwards compatibility
+        bracket_pattern = re.compile(r'(\[)([^\]]+)(\])')
+        speclist = bracket_pattern.findall(newtext)  # list of all specifiers
+
+        # if empty, return current text
         if not speclist:
-            return thetext
+            return newtext
 
         # loop through specs and if they specify a current variable, replace
-        # spec in input string with value of current variable, otherwise '???'
-        newtext = str(thetext)
+        # spec in input string with value of current variable, otherwise 'Unknown'
         for left, varname, right in speclist:
             full = left + varname + right
             try:
