@@ -80,6 +80,10 @@ VALID_CONDITIONS = [
     "KeyBufferLacks",
     "HasViewTimePassed",
     "HasTotalTimePassed",
+    "ObjectInPocketByID",
+    "ObjectInPocketByName",
+    "ObjectIsHiddenByID",
+    "ObjectIsHiddenByName",
 ]
 VALID_TRIGGERS = ["ViewTimePassed", "TotalTimePassed"]
 VALID_ACTIONS = [
@@ -1537,6 +1541,55 @@ class ViewPanel(QWidget):
             return str(characters).lower() not in self.key_buffer.lower()
         else:
             return str(characters) not in self.key_buffer
+
+    def ObjectInPocketByID(self, object_id: int) -> bool:
+        """
+        This condition returns <i>True</i> if the object with the specified <b><i>Object</i></b> ID
+        is currently in one of the pockets.
+        :scope viewobjectglobalpocket
+        :mtype condition
+        """
+        object_id = int(object_id)
+        for pocket in self.parent().pocket_objects.values():
+            if pocket.object_info and pocket.object_info.Id == object_id:
+                return True
+        return False
+
+    def ObjectInPocketByName(self, name: str) -> bool:
+        """
+        This condition returns <i>True</i> if any object with the specified <b><i>Name</i></b>
+        is currently in one of the pockets, regardless of its ID.
+        :scope viewobjectglobalpocket
+        :mtype condition
+        """
+        for pocket in self.parent().pocket_objects.values():
+            if pocket.object_info and pocket.object_info.name == name:
+                return True
+        return False
+
+    def ObjectIsHiddenByID(self, object_id: int) -> bool:
+        """
+        This condition returns <i>True</i> if the object with the specified <b><i>Object</i></b> ID
+        is currently hidden (not visible) in the current view.
+        :scope viewobjectglobalpocket
+        :mtype condition
+        """
+        object_id = str(object_id)
+        if object_id in self.View.Objects:
+            return not self.View.Objects[object_id].Visible
+        return False
+
+    def ObjectIsHiddenByName(self, name: str) -> bool:
+        """
+        This condition returns <i>True</i> if any object with the specified <b><i>Name</i></b>
+        is currently hidden (not visible) in the current view.
+        :scope viewobjectglobalpocket
+        :mtype condition
+        """
+        for obj in self.View.Objects.values():
+            if obj.Name == name and not obj.Visible:
+                return True
+        return False
 
     # --------------------------------------------
     # >>>>>>>>>>> Trigger Handlers <<<<<<<<<<<<<<<<
