@@ -2614,34 +2614,48 @@ class ViewPanel(QWidget):
                       Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         _text = self.var_in_text(message)  # convert any variable specifiers in the text
+        text_hash = gu.string_hash(_text)
 
-        speech_file = f'speech_{gu.string_hash(_text)}.mp3'
-        speech_path = Path(self.options.TTSFolder, speech_file)
+        # Step 0: Check if WAV already exists in cache
+        if audiocache.is_tts_cached(text_hash):
+            cached_wav = audiocache.get_tts_cache_path(text_hash)
+            log.debug(f'TTS resource found in cache: {cached_wav}')
+            try:
+                self.play_sound(sound_file=str(cached_wav))
+            except Exception as e:
+                log.error(f'Problem playing cached TTS file {cached_wav}: {e}')
+            return
 
-        if speech_path.is_file():
-            log.debug(f'TTS resource already generated and in {str(speech_path)}!')
-            try:
-                self.play_sound(sound_file=str(speech_path))
-            except Exception as e:
-                log.error(f'Problem playing speech audio file called {str(speech_path)}: {e}')
-        else:
-            log.debug(f'TTS resource does not exist in {str(speech_path)}, will try to generate it using web.')
-            try:
-                tts = gTTS(_text)
-            except Exception as e:
-                log.error(f'Problem generating tts resource using gTTS web api: {e}')
-                return
-            try:
-                tts.save(str(speech_path))
-            except Exception as e:
-                log.error(f'Unable to write to speech_path {str(speech_path)} ({e}), '
-                          f'will just create a temporary file.')
-                speech_path = tempfile.TemporaryFile()
-                tts.save(str(speech_path))
+        # Step 1: Download mp3 to temp folder
+        log.debug(f'TTS not in cache, generating from Google...')
         try:
-            self.play_sound(sound_file=str(speech_path))
+            tts = gTTS(_text)
         except Exception as e:
-            log.error(f'Problem playing speech audio file called {str(speech_path)}: {e}')
+            log.error(f'Problem generating TTS resource using gTTS web api: {e}')
+            return
+
+        # Save to temp folder
+        temp_folder = Path(tempfile.gettempdir(), "gemsruntemp")
+        temp_folder.mkdir(parents=True, exist_ok=True)
+        temp_mp3 = temp_folder / f"speech_{text_hash}.mp3"
+
+        try:
+            tts.save(str(temp_mp3))
+        except Exception as e:
+            log.error(f'Unable to save TTS mp3 to temp folder: {e}')
+            return
+
+        # Step 2: Convert mp3 to wav and cache it
+        cached_wav = audiocache.cache_tts_from_mp3(temp_mp3, text_hash)
+        if cached_wav is None:
+            log.warning(f'Failed to cache TTS, playing from temp mp3')
+            cached_wav = temp_mp3
+
+        # Step 3: Play the sound
+        try:
+            self.play_sound(sound_file=str(cached_wav))
+        except Exception as e:
+            log.error(f'Problem playing TTS audio file {cached_wav}: {e}')
 
     def HidePockets(self):
         """

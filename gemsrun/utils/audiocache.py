@@ -170,6 +170,41 @@ def get_playback_path(original_path: str | Path) -> Path:
     return original
 
 
+def get_tts_cache_path(text_hash: str) -> Path:
+    """Get the path where a TTS WAV file would be cached based on text hash."""
+    return get_cache_folder() / f"speech_{text_hash}.wav"
+
+
+def is_tts_cached(text_hash: str) -> bool:
+    """Check if a TTS WAV file exists in cache for the given text hash."""
+    return get_tts_cache_path(text_hash).exists()
+
+
+def cache_tts_from_mp3(mp3_path: str | Path, text_hash: str) -> Path | None:
+    """
+    Convert a TTS mp3 file to WAV and cache it.
+
+    Args:
+        mp3_path: Path to the temporary mp3 file from gTTS
+        text_hash: Hash of the text for naming the cached file
+
+    Returns:
+        Path to the cached WAV file, or None if conversion failed
+    """
+    cached_path = get_tts_cache_path(text_hash)
+
+    if cached_path.exists():
+        log.debug(f"    TTS CACHE EXISTS: speech_{text_hash}.wav")
+        return cached_path
+
+    log.debug(f"    TTS CACHE CONVERTING: {mp3_path} -> speech_{text_hash}.wav")
+    if convert_to_wav(mp3_path, cached_path):
+        return cached_path
+
+    log.warning(f"TTS cache conversion failed for {text_hash}")
+    return None
+
+
 def find_playsound_files_in_database(db: Munch, media_path: str | Path) -> list[Path]:
     """
     Find all audio files referenced in PlaySound actions in the database.
