@@ -44,6 +44,38 @@ def get_param(param: str) -> str:
         return param
 
 
+def _replace_brackets_outside_quotes(s: str, left_repl: str, right_repl: str) -> str:
+    """Replace [ and ] only when they appear outside of quoted strings."""
+    result = []
+    in_single_quote = False
+    in_double_quote = False
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        # Handle escape sequences
+        if ch == '\\' and i + 1 < len(s):
+            result.append(ch)
+            result.append(s[i + 1])
+            i += 2
+            continue
+        # Track quote state
+        if ch == '"' and not in_single_quote:
+            in_double_quote = not in_double_quote
+            result.append(ch)
+        elif ch == "'" and not in_double_quote:
+            in_single_quote = not in_single_quote
+            result.append(ch)
+        # Replace brackets only outside quotes
+        elif ch == '[' and not in_single_quote and not in_double_quote:
+            result.append(left_repl)
+        elif ch == ']' and not in_single_quote and not in_double_quote:
+            result.append(right_repl)
+        else:
+            result.append(ch)
+        i += 1
+    return ''.join(result)
+
+
 def func_str_parts(cmd: str) -> tuple[str, list[str]]:
     """
     returns the function name and parameter list from a call within a string.
@@ -55,7 +87,8 @@ def func_str_parts(cmd: str) -> tuple[str, list[str]]:
     func_pattern = re.compile(r"(\w+)\s*\((.*?)\)$")
     split_pattern = regex.compile(r'"[^"]*"(*SKIP)(*FAIL)|,\s*')
 
-    prepped = cmd.strip().replace("[", '"(LEFT) ').replace("]", ' (RIGHT)"')
+    # Only replace brackets outside of quoted strings to preserve variable specifiers
+    prepped = _replace_brackets_outside_quotes(cmd.strip(), '"(LEFT) ', ' (RIGHT)"')
     func = func_pattern.fullmatch(prepped)
     if func is None:
         raise ValueError(f"String is not a valid function call: {cmd!r}")
