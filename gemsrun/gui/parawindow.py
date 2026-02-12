@@ -18,14 +18,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from functools import partial
 from pathlib import Path
+import threading
 
 from munch import Munch
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QSettings, QTimer
 from PySide6.QtGui import QFontMetrics, QResizeEvent
 from PySide6.QtWidgets import QComboBox, QDialog, QFileDialog, QMessageBox, QSizePolicy
 
 from gemsrun.gui.paramdialog import Ui_paramDialog
-from gemsrun.session.version import __version__
+from gemsrun.session.version import __version__, check_latest_github_version, version_less_than
 
 ERROR = "background : red;"
 NORMAL = ""
@@ -53,6 +54,7 @@ class ParamDialog(QDialog):
         self.ui = Ui_paramDialog()
         self.ui.setupUi(self)
         self.setWindowTitle(f"GEMSrun v{__version__}")
+        self._check_for_update()
         self.resize(1200, 400)
         self.params = params
 
@@ -124,6 +126,18 @@ class ParamDialog(QDialog):
         self.ui.cancelPushButton.clicked.connect(self.quit)
         self.ui.startPushButton.clicked.connect(self.start)
         self.ui.toolButton.clicked.connect(self.load_envfile)
+
+    def _check_for_update(self):
+        """Check GitHub for a newer version in a background thread, amend window title if found."""
+
+        def _do_check():
+            latest = check_latest_github_version()
+            if latest and version_less_than(__version__, latest):
+                QTimer.singleShot(0, lambda: self.setWindowTitle(
+                    f"GEMSrun v{__version__}    [GEMSrun version {latest} available]"
+                ))
+
+        threading.Thread(target=_do_check, daemon=True).start()
 
     def check_changing(self, key: str, state: bool):
         self.params[key] = bool(state)

@@ -17,8 +17,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from importlib.metadata import version
+import io
 import os
 import tomllib
+import urllib.request
 
 
 def get_version_from_pyproject():
@@ -33,6 +35,36 @@ def get_version_from_pyproject():
     with open(pyproject_path, "rb") as f:
         pyproject_data = tomllib.load(f)
         return pyproject_data.get("project", {}).get("version", "Unknown")
+
+
+GITHUB_PYPROJECT_URL = "https://raw.githubusercontent.com/travisseymour/GEMSrun/main/pyproject.toml"
+
+
+def version_less_than(version_str: str, target: str) -> bool:
+    """Compare version strings like '2026.1.10.7'. Returns True if version_str < target."""
+    if not version_str or not target:
+        return False
+    try:
+        v1 = [int(x) for x in str(version_str).split(".")]
+        v2 = [int(x) for x in str(target).split(".")]
+        max_len = max(len(v1), len(v2))
+        v1.extend([0] * (max_len - len(v1)))
+        v2.extend([0] * (max_len - len(v2)))
+        return v1 < v2
+    except (ValueError, AttributeError):
+        return False
+
+
+def check_latest_github_version() -> str | None:
+    """Fetch the latest version from the GitHub repo. Returns version string or None on failure."""
+    try:
+        req = urllib.request.Request(GITHUB_PYPROJECT_URL)
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = resp.read()
+        pyproject_data = tomllib.load(io.BytesIO(data))
+        return pyproject_data.get("project", {}).get("version", None)
+    except Exception:
+        return None
 
 
 try:
