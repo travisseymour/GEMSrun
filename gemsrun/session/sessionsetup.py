@@ -233,6 +233,11 @@ def setup_session(args: Munch) -> Munch:
         _ = database.Global.Options.Volume
     except Exception:
         database.Global.Options.Volume = 1.0
+    # - temporarily kept bc some old envs lack a transition duration option
+    try:
+        _ = database.Global.Options.TransitionDuration
+    except Exception:
+        database.Global.Options.TransitionDuration = 400
     # ----------------------------------------------------------------------------------------------
 
     return Munch({"ok": True, "database": database})

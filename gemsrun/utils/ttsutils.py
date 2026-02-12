@@ -96,7 +96,9 @@ def render_tts_from_google(db: Munch) -> bool:
                     # Convert to WAV and cache
                     cached_wav = audiocache.cache_tts_from_mp3(temp_mp3, speech_hash)
                     if cached_wav:
-                        log.debug(f"Pre-rendered TTS: {speech[:30]}... -> {cached_wav.name}")
+                        log.debug(
+                            f"Pre-rendered TTS: {speech[:30]}... -> {cached_wav.name}"
+                        )
 
         return True
     except Exception as e:

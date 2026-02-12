@@ -53,7 +53,7 @@ def _replace_brackets_outside_quotes(s: str, left_repl: str, right_repl: str) ->
     while i < len(s):
         ch = s[i]
         # Handle escape sequences
-        if ch == '\\' and i + 1 < len(s):
+        if ch == "\\" and i + 1 < len(s):
             result.append(ch)
             result.append(s[i + 1])
             i += 2
@@ -66,14 +66,14 @@ def _replace_brackets_outside_quotes(s: str, left_repl: str, right_repl: str) ->
             in_single_quote = not in_single_quote
             result.append(ch)
         # Replace brackets only outside quotes
-        elif ch == '[' and not in_single_quote and not in_double_quote:
+        elif ch == "[" and not in_single_quote and not in_double_quote:
             result.append(left_repl)
-        elif ch == ']' and not in_single_quote and not in_double_quote:
+        elif ch == "]" and not in_single_quote and not in_double_quote:
             result.append(right_repl)
         else:
             result.append(ch)
         i += 1
-    return ''.join(result)
+    return "".join(result)
 
 
 def func_str_parts(cmd: str) -> tuple[str, list[str]]:

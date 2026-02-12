@@ -20,15 +20,23 @@ import contextlib
 import timeit
 
 from munch import Munch
-from PySide6.QtCore import QRect, QSize, Qt
-from PySide6.QtGui import QCloseEvent, QKeyEvent
-from PySide6.QtWidgets import QApplication, QMainWindow
+from PySide6.QtCore import QRect, QSize, Qt, QTimer
+from PySide6.QtGui import QCloseEvent, QKeyEvent, QPixmap
+from PySide6.QtWidgets import QApplication, QLabel, QMainWindow
 
 import gemsrun
 from gemsrun import log
 from gemsrun.gui.infowindow import InfoDialog
 from gemsrun.gui.viewpanel import ViewPanel
 from gemsrun.gui.viewpanelobjects import ViewPocketObject
+
+_TRANSITION_MAP = {
+    "none": None,
+    "fade": "dissolve",
+    "dissolve": "dissolve",
+    "wipe-left": "wipe-left",
+    "wipe-right": "wipe-right",
+}
 
 
 class MainWin(QMainWindow):
@@ -41,6 +49,9 @@ class MainWin(QMainWindow):
         self.view_window: ViewPanel | None = None
         self.pocket_objects: dict[int, ViewPocketObject] | None = None
         self.note_window = None
+        self._transition_overlay: QLabel | None = None
+        self._transition_clip = None
+        self._before_pixmap: QPixmap | None = None
         self.setWindowTitle(db.Name)
 
         # Center
@@ -106,6 +117,8 @@ class MainWin(QMainWindow):
 
     def shutdown_view(self):
         log.debug(f"Shutting Down Existing View #{self.current_view_id}")
+        has_pending_transition = self._before_pixmap is not None
+
         if self.view_window:
             self.view_window.close()
 
@@ -114,9 +127,110 @@ class MainWin(QMainWindow):
             self.current_view_id = self.next_view_id
             self.next_view_id = -1
             self.load_next_view()
+            if has_pending_transition and self.view_window:
+                # Re-raise overlay — new ViewPanel's show() pushed it underneath
+                if self._transition_overlay:
+                    self._transition_overlay.raise_()
+                self._start_transition_after_render()
         else:
+            self._before_pixmap = None
             log.debug("Shutting Down Environment!")
             self.close()
+
+    def _resolve_transition(self) -> str | None:
+        """Return the transition_clip name, or None for instant switch."""
+        raw = getattr(self.options, "Roomtransition", "None") or "None"
+        result = _TRANSITION_MAP.get(raw.strip().lower())
+        if result is None and raw.strip().lower() != "none":
+            log.warning(
+                f'Unrecognized Roomtransition value "{raw}", defaulting to no transition.'
+            )
+        return result
+
+    def prepare_transition(self, before_pixmap: QPixmap):
+        """Store a screenshot and show overlay immediately to prevent flash."""
+        # Cancel any in-progress transition
+        if self._transition_clip:
+            self._transition_clip.stop()
+        if self._transition_overlay:
+            self._transition_overlay.hide()
+            self._transition_overlay.deleteLater()
+            self._transition_overlay = None
+            self._transition_clip = None
+
+        self._before_pixmap = before_pixmap
+
+        # Create overlay NOW so it covers the view switch
+        overlay = QLabel(self)
+        overlay.setGeometry(0, 0, self.width(), self.height())
+        overlay.setStyleSheet("background-color: black;")
+        overlay.setPixmap(
+            before_pixmap.scaled(
+                overlay.size(),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        )
+        overlay.show()
+        overlay.raise_()
+        self._transition_overlay = overlay
+
+    def _start_transition_after_render(self):
+        """Defer transition playback until the new view is fully painted."""
+        QApplication.processEvents()
+        if self._transition_overlay:
+            self._transition_overlay.raise_()
+        QTimer.singleShot(50, self._play_room_transition)
+
+    def _play_room_transition(self):
+        """Capture the after-pixmap and play the room transition."""
+        from gemsrun.gui.transition_clip import make_transition
+
+        before_pixmap = self._before_pixmap
+        self._before_pixmap = None
+
+        if (
+            before_pixmap is None
+            or not self.view_window
+            or not self._transition_overlay
+        ):
+            return
+
+        transition_name = self._resolve_transition()
+        if not transition_name:
+            if self._transition_overlay:
+                self._transition_overlay.hide()
+                self._transition_overlay.deleteLater()
+                self._transition_overlay = None
+            return
+
+        after_pixmap = self.view_window.grab()
+
+        duration_ms = max(
+            100, min(2000, int(getattr(self.options, "TransitionDuration", 400)))
+        )
+        log.debug(f"Playing room transition: {transition_name} ({duration_ms}ms)")
+
+        overlay = self._transition_overlay
+        overlay.raise_()
+
+        clip = make_transition(
+            before_pixmap, after_pixmap, transition_name, duration_ms
+        )
+
+        clip.frameChanged.connect(overlay.setPixmap)
+
+        def on_transition_finished():
+            clip.stop()
+            overlay.hide()
+            overlay.deleteLater()
+            self._transition_overlay = None
+            self._transition_clip = None
+
+        clip.finished.connect(on_transition_finished)
+
+        self._transition_clip = clip
+        clip.start(loop=False)
 
     def task_elapsed(self):
         return timeit.default_timer() - self.task_start_time
@@ -126,6 +240,12 @@ class MainWin(QMainWindow):
             self.note_window.notes.SetLabel(text)
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        if self._transition_clip:
+            self._transition_clip.stop()
+            self._transition_clip = None
+        if self._transition_overlay:
+            self._transition_overlay.hide()
+            self._transition_overlay = None
         with contextlib.suppress(Exception):
             self.info_window.close()
         event.accept()

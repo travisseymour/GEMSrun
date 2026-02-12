@@ -2142,7 +2142,11 @@ class ViewPanel(QWidget):
                     log.error(f'Unable to create transition video from {str(video_path.resolve())}: {e}')
                     # Fall through to do portal without video
 
-        # No transition video or video failed - do direct portal
+        # No transition video or video failed - check for room transition effect
+        transition_name = self.parent()._resolve_transition()
+        if transition_name:
+            self.parent().prepare_transition(self.grab())
+
         log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
                       Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
         do_portal()
@@ -2680,7 +2684,7 @@ class ViewPanel(QWidget):
             return
 
         # Step 1: Download mp3 to temp folder
-        log.debug(f'TTS not in cache, generating from Google...')
+        log.debug('TTS not in cache, generating from Google...')
         try:
             tts = gTTS(_text)
         except Exception as e:
@@ -2701,7 +2705,7 @@ class ViewPanel(QWidget):
         # Step 2: Convert mp3 to wav and cache it
         cached_wav = audiocache.cache_tts_from_mp3(temp_mp3, text_hash)
         if cached_wav is None:
-            log.warning(f'Failed to cache TTS, playing from temp mp3')
+            log.warning('Failed to cache TTS, playing from temp mp3')
             cached_wav = temp_mp3
 
         # Step 3: Play the sound
