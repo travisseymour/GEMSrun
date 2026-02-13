@@ -163,16 +163,6 @@ class MainWin(QMainWindow):
 
         self._before_pixmap = before_pixmap
 
-        # Debug: log sizes and DPR for transition diagnosis
-        screen = self.screen()
-        log.info(
-            f"TRANSITION DEBUG: window=({self.width()}x{self.height()}), "
-            f"before_pixmap=({before_pixmap.width()}x{before_pixmap.height()}, "
-            f"dpr={before_pixmap.devicePixelRatio()}), "
-            f"screen_dpr={screen.devicePixelRatio() if screen else '?'}, "
-            f"screen_size={screen.size().width()}x{screen.size().height() if screen else '?'}"
-        )
-
         # Create overlay NOW so it covers the view switch
         overlay = QLabel(self)
         overlay.setGeometry(0, 0, self.width(), self.height())
@@ -221,22 +211,10 @@ class MainWin(QMainWindow):
         overlay = self._transition_overlay
         overlay.raise_()
 
-        log.info(
-            f"TRANSITION DEBUG: after_pixmap=({after_pixmap.width()}x{after_pixmap.height()}, "
-            f"dpr={after_pixmap.devicePixelRatio()}), "
-            f"overlay=({overlay.width()}x{overlay.height()}), "
-            f"view_window=({self.view_window.width()}x{self.view_window.height()}), "
-            f"transition={transition_name}, duration={duration_ms}ms"
-        )
+        log.debug(f"Playing room transition: {transition_name} ({duration_ms}ms)")
 
         clip = make_transition(
             before_pixmap, after_pixmap, transition_name, duration_ms
-        )
-
-        log.info(
-            f"TRANSITION DEBUG: clip frames={clip.frame_count}, "
-            f"frame0=({clip.frames[0].width()}x{clip.frames[0].height()}, "
-            f"dpr={clip.frames[0].devicePixelRatio()})"
         )
 
         clip.frameChanged.connect(overlay.setPixmap)
