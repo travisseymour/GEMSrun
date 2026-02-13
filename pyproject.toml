@@ -14,11 +14,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "GEMSrun"
 description = "Environment Runner for GEMS (Graphical Environment Management System)"
-version = "2026.1.12.5"
+version = "2026.1.12.6"
 authors = [{name = "Travis L. Seymour, PhD", email = "nogard@ucsc.edu"}]
 license = {text = "GPLv3"}
 readme = "ReadMe.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 keywords = ["VR", "graphical", "environment", "runner"]
 classifiers = [
     "Programming Language :: Python :: 3",
