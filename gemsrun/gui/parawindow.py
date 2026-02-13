@@ -26,7 +26,11 @@ from PySide6.QtGui import QFontMetrics, QResizeEvent
 from PySide6.QtWidgets import QComboBox, QDialog, QFileDialog, QMessageBox, QSizePolicy
 
 from gemsrun.gui.paramdialog import Ui_paramDialog
-from gemsrun.session.version import __version__, check_latest_github_version, version_less_than
+from gemsrun.session.version import (
+    __version__,
+    check_latest_github_version,
+    version_less_than,
+)
 
 ERROR = "background : red;"
 NORMAL = ""
@@ -133,9 +137,12 @@ class ParamDialog(QDialog):
         def _do_check():
             latest = check_latest_github_version()
             if latest and version_less_than(__version__, latest):
-                QTimer.singleShot(0, lambda: self.setWindowTitle(
-                    f"GEMSrun v{__version__}    [GEMSrun version {latest} available]"
-                ))
+                QTimer.singleShot(
+                    0,
+                    lambda: self.setWindowTitle(
+                        f"GEMSrun v{__version__}    [GEMSrun version {latest} available]"
+                    ),
+                )
 
         threading.Thread(target=_do_check, daemon=True).start()
 

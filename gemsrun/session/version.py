@@ -37,7 +37,9 @@ def get_version_from_pyproject():
         return pyproject_data.get("project", {}).get("version", "Unknown")
 
 
-GITHUB_PYPROJECT_URL = "https://raw.githubusercontent.com/travisseymour/GEMSrun/main/pyproject.toml"
+GITHUB_PYPROJECT_URL = (
+    "https://raw.githubusercontent.com/travisseymour/GEMSrun/main/pyproject.toml"
+)
 
 
 def version_less_than(version_str: str, target: str) -> bool:
