@@ -170,7 +170,7 @@ class MainWin(QMainWindow):
         overlay.setPixmap(
             before_pixmap.scaled(
                 overlay.size(),
-                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.AspectRatioMode.IgnoreAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
         )
