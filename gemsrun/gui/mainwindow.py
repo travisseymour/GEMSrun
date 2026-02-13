@@ -167,13 +167,8 @@ class MainWin(QMainWindow):
         overlay = QLabel(self)
         overlay.setGeometry(0, 0, self.width(), self.height())
         overlay.setStyleSheet("background-color: black;")
-        overlay.setPixmap(
-            before_pixmap.scaled(
-                overlay.size(),
-                Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-        )
+        overlay.setScaledContents(True)
+        overlay.setPixmap(before_pixmap)
         overlay.show()
         overlay.raise_()
         self._transition_overlay = overlay
