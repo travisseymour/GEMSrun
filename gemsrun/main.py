@@ -115,6 +115,11 @@ def run(
     cli_fname = fname or env_path or ""
     cli_user = user or user_arg
 
+    # Round fractional DPR (e.g. 1.198) to nearest integer to avoid rendering
+    # artifacts in view transitions on screens with non-integer text scaling.
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.Round
+    )
     gemsrun.APPLICATION = QApplication([])
     gemsrun.default_font = QFont("Arial", 12)
     gemsrun.SETTINGS = QSettings()
