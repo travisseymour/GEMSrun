@@ -4,7 +4,9 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:sockheadrps.github.io)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(ruff check:*)",
+      "Bash(ruff format:*)"
     ]
   }
 }

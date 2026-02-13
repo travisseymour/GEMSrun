@@ -16,24 +16,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 import hashlib
 import inspect
 import os
 from pathlib import Path
 import shutil
-import ssl
 import tempfile
 import timeit
 import traceback
-import urllib.error
-import urllib.request
 
-import certifi
 from PIL import Image
+import requests
 
 from gemsrun import log
-
-_SSL_CONTEXT: ssl.SSLContext | None = None
 
 
 def create_temporary_folder() -> Path:
@@ -60,9 +56,7 @@ def check_media(db_filename, database, media_folder) -> tuple:
 
     # define a helper function
     def file_ok(file_name: str):
-        return (not file_name) or os.path.isfile(
-            os.path.join(media_folder, os.path.basename(file_name))
-        )
+        return (not file_name) or os.path.isfile(os.path.join(media_folder, os.path.basename(file_name)))
 
     # loop through and update outcomelist with any missing files
     for record in all_records:
@@ -90,39 +84,41 @@ def func_params():
     return res
 
 
-def _get_ssl_context() -> ssl.SSLContext:
+def _do_connectivity_request(url: str, timeout: float) -> bool:
     """
-    Build an SSL context backed by certifi's CA bundle so HTTPS checks work even
-    on platforms (e.g., python.org macOS builds) that ship without system CAs.
+    Perform the actual HTTP HEAD request. Called within a thread pool
+    so that DNS resolution hangs can be interrupted by the executor timeout.
     """
-    global _SSL_CONTEXT
-    if _SSL_CONTEXT is None:
-        context = ssl.create_default_context()
-        try:
-            context.load_verify_locations(certifi.where())
-        except Exception as e:  # pragma: no cover - defensive logging
-            log.debug(f"unable to load certifi CA bundle for connectivity check ({e})")
-        _SSL_CONTEXT = context
-    return _SSL_CONTEXT
+    response = requests.head(url, timeout=(timeout, timeout), allow_redirects=True)
+    return response.status_code < 500
 
 
-def check_connectivity(url: str):
+def check_connectivity(url: str, timeout: float = 3.0) -> bool:
+    """
+    Check internet connectivity by making a HEAD request to the given URL.
+
+    Uses a ThreadPoolExecutor with a hard timeout to ensure we never hang
+    longer than `timeout` seconds, even if DNS resolution stalls.
+    """
+    log.debug(f"starting to check connectivity {url}...")
+    start = timeit.default_timer()
+
     try:
-        log.debug(f"starting to check connectivity {url}...")
-        start = timeit.default_timer()
-        response = urllib.request.urlopen(url, timeout=1, context=_get_ssl_context())
-        log.debug(f"web response was {response}")
-        log.debug(
-            f"finished checking connectivity after {timeit.default_timer() - start:0.4f} sec."
-        )
-        return True
-    except urllib.error.HTTPError as e:
-        if e.code == 429:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_do_connectivity_request, url, timeout)
+            result = future.result(timeout=timeout + 0.5)
+        log.debug(f"finished checking connectivity after {timeit.default_timer() - start:0.4f} sec.")
+        return result
+    except requests.exceptions.HTTPError as e:
+        if e.response is not None and e.response.status_code == 429:
             log.debug("connectivity confirmed but remote limited requests (HTTP 429)")
             return True
         log.warning(f"fail to check connectivity! {e}")
         return False
-    except (TimeoutError, urllib.error.URLError, ssl.SSLError) as e:  # <-- Fix here
+    except FuturesTimeoutError:
+        log.warning(f"connectivity check timed out after {timeout}s (possibly DNS resolution hung)")
+        return False
+    except (requests.exceptions.RequestException, OSError) as e:
         log.warning(f"fail to check connectivity! {e}")
         return False
 

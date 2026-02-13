@@ -14,7 +14,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "GEMSrun"
 description = "Environment Runner for GEMS (Graphical Environment Management System)"
-version = "2026.1.12.3"
+version = "2026.1.12.4"
 authors = [{name = "Travis L. Seymour, PhD", email = "nogard@ucsc.edu"}]
 license = {text = "GPLv3"}
 readme = "ReadMe.md"
@@ -41,7 +41,8 @@ dependencies = [
   "munch>=4.0.0,<5.0.0",
   "playsound3>=3.0.0,<4.0.0",
   "typer>=0.12.5,<1.0.0",
-  "pygame>=2.0.0,<3.0.0"
+  "pygame>=2.0.0,<3.0.0",
+  "requests>=2.32.0,<3.0.0"
 ]
 
 [project.urls]
