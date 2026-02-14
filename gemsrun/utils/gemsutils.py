@@ -103,10 +103,11 @@ def check_connectivity(url: str, timeout: float = 3.0) -> bool:
     log.debug(f"starting to check connectivity {url}...")
     start = timeit.default_timer()
 
+    executor = None
     try:
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(_do_connectivity_request, url, timeout)
-            result = future.result(timeout=timeout + 0.5)
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(_do_connectivity_request, url, timeout)
+        result = future.result(timeout=timeout + 0.5)
         log.debug(f"finished checking connectivity after {timeit.default_timer() - start:0.4f} sec.")
         return result
     except requests.exceptions.HTTPError as e:
@@ -121,6 +122,12 @@ def check_connectivity(url: str, timeout: float = 3.0) -> bool:
     except (requests.exceptions.RequestException, OSError) as e:
         log.warning(f"fail to check connectivity! {e}")
         return False
+    except Exception as e:
+        log.warning(f"unexpected error during connectivity check: {e}")
+        return False
+    finally:
+        if executor is not None:
+            executor.shutdown(wait=False, cancel_futures=True)
 
 
 def string_hash(s: str) -> str:
