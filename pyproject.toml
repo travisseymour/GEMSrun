@@ -14,7 +14,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "GEMSrun"
 description = "Environment Runner for GEMS (Graphical Environment Management System)"
-version = "2026.1.14.2"
+version = "2026.1.14.3"
 authors = [{name = "Travis L. Seymour, PhD", email = "nogard@ucsc.edu"}]
 license = {text = "GPLv3"}
 readme = "ReadMe.md"

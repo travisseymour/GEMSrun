@@ -163,6 +163,12 @@ class ParamDialog(QDialog):
         self.close()
 
     def start(self):
+        import sys
+
+        if sys.platform == "win32":
+            print(f"[DEBUG] Start pressed: env_valid={self._env_valid}, user_valid={self._user_valid}")
+            print(f"[DEBUG] fname={self.params.fname!r}, user={self.params.user!r}")
+
         if not self._env_valid or not self._user_valid:
             # Build specific error message
             issues = []
@@ -179,6 +185,9 @@ class ParamDialog(QDialog):
             )
             return
 
+        if sys.platform == "win32":
+            print("[DEBUG] Validation passed, closing dialog...")
+
         self._add_recent_env(self.params.fname)
         self._persist_recent_envs()
         self.ok = True
@@ -190,8 +199,19 @@ class ParamDialog(QDialog):
             return ""
         # Resolve the path to handle forward/backward slashes and normalize
         try:
-            return str(Path(path_str.strip()).resolve())
-        except (OSError, ValueError):
+            resolved = str(Path(path_str.strip()).resolve())
+            # Debug: print path resolution on Windows
+            import sys
+
+            if sys.platform == "win32":
+                is_file = Path(resolved).is_file()
+                print(f"[DEBUG] Path: {path_str!r} -> {resolved!r}, is_file={is_file}")
+            return resolved
+        except (OSError, ValueError) as e:
+            import sys
+
+            if sys.platform == "win32":
+                print(f"[DEBUG] Path normalize failed: {path_str!r}, error: {e}")
             return path_str.strip()
 
     def _load_recent_envs(self) -> list[str]:
