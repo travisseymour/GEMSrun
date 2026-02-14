@@ -71,50 +71,30 @@ class ParamDialog(QDialog):
 
         # setup initial validations for text fields
 
-        self.ui.envLineEdit.setStyleSheet(
-            NORMAL if self.ui.envLineEdit.text() else ERROR
-        )
-        self.ui.userLineEdit.setStyleSheet(
-            NORMAL if self.ui.userLineEdit.text() else ERROR
-        )
+        self.ui.envLineEdit.setStyleSheet(NORMAL if self.ui.envLineEdit.text() else ERROR)
+        self.ui.userLineEdit.setStyleSheet(NORMAL if self.ui.userLineEdit.text() else ERROR)
 
         # create change handlers for text fields
-        self.ui.userLineEdit.textChanged.connect(
-            partial(self.text_changing, self.ui.userLineEdit, "user")
-        )
+        self.ui.userLineEdit.textChanged.connect(partial(self.text_changing, self.ui.userLineEdit, "user"))
 
         # create change handlers for checkboxes
 
-        self.ui.skipdataCheckBox.stateChanged.connect(
-            partial(self.check_changing, "skipdata")
-        )
-        self.ui.overwriteCheckBox.stateChanged.connect(
-            partial(self.check_changing, "overwrite")
-        )
-        self.ui.debugCheckBox.stateChanged.connect(
-            partial(self.check_changing, "debug")
-        )
-        self.ui.skipmediaCheckBox.stateChanged.connect(
-            partial(self.check_changing, "skipmedia")
-        )
-        self.ui.fullscreenCheckBox.stateChanged.connect(
-            partial(self.check_changing, "fullscreen")
-        )
+        self.ui.skipdataCheckBox.stateChanged.connect(partial(self.check_changing, "skipdata"))
+        self.ui.overwriteCheckBox.stateChanged.connect(partial(self.check_changing, "overwrite"))
+        self.ui.debugCheckBox.stateChanged.connect(partial(self.check_changing, "debug"))
+        self.ui.skipmediaCheckBox.stateChanged.connect(partial(self.check_changing, "skipmedia"))
+        self.ui.fullscreenCheckBox.stateChanged.connect(partial(self.check_changing, "fullscreen"))
 
         # dropdown of recent environment files
         self.ui.envLineEdit.hide()  # replace with dropdown
         self.env_history_combo = QComboBox(self)
         self.env_history_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.env_history_combo.setSizeAdjustPolicy(
-            QComboBox.AdjustToMinimumContentsLengthWithIcon
-        )
+        self.env_history_combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
         self.env_history_combo.setMinimumContentsLength(40)
         self.env_history_combo.setInsertPolicy(QComboBox.NoInsert)
         self.env_history_combo.currentTextChanged.connect(self._env_selected)
         self._populate_env_combo()
-        self.ui.horizontalLayout_4.insertWidget(
-            2, self.env_history_combo, 1
-        )  # stretch factor of 1
+        self.ui.horizontalLayout_4.insertWidget(2, self.env_history_combo, 1)  # stretch factor of 1
 
         # Enter orig values into each widget
 
@@ -139,9 +119,7 @@ class ParamDialog(QDialog):
             if latest and version_less_than(__version__, latest):
                 QTimer.singleShot(
                     0,
-                    lambda: self.setWindowTitle(
-                        f"GEMSrun v{__version__}    [GEMSrun version {latest} available]"
-                    ),
+                    lambda: self.setWindowTitle(f"GEMSrun v{__version__}    [GEMSrun version {latest} available]"),
                 )
 
         threading.Thread(target=_do_check, daemon=True).start()
@@ -204,6 +182,16 @@ class ParamDialog(QDialog):
         self.ok = True
         self.close()
 
+    def _normalize_path(self, path_str: str) -> str:
+        """Normalize a path string for consistent cross-platform handling."""
+        if not path_str:
+            return ""
+        # Resolve the path to handle forward/backward slashes and normalize
+        try:
+            return str(Path(path_str.strip()).resolve())
+        except (OSError, ValueError):
+            return path_str.strip()
+
     def _load_recent_envs(self) -> list[str]:
         stored = self.settings.value("recent_env_paths", defaultValue=[], type=list)
         if stored is None:
@@ -212,15 +200,12 @@ class ParamDialog(QDialog):
             stored = [stored]
         envs = []
         for env in stored:
-            env_str = str(env).strip()
+            env_str = self._normalize_path(str(env))
             if env_str and env_str not in envs:
                 envs.append(env_str)
-        if (
-            self.params.fname
-            and Path(self.params.fname).is_file()
-            and self.params.fname not in envs
-        ):
-            envs.insert(0, self.params.fname)
+        normalized_fname = self._normalize_path(self.params.fname) if self.params.fname else ""
+        if normalized_fname and Path(normalized_fname).is_file() and normalized_fname not in envs:
+            envs.insert(0, normalized_fname)
         return envs[:10]
 
     def _calc_max_path_chars(self) -> int:
@@ -250,6 +235,7 @@ class ParamDialog(QDialog):
         self.env_history_combo.blockSignals(False)
 
     def _set_env_from_history(self, full_path: str):
+        full_path = self._normalize_path(full_path)
         self.env_history_combo.blockSignals(True)
         if full_path:
             # Find by item data (full path)
@@ -264,13 +250,13 @@ class ParamDialog(QDialog):
 
     def _env_selected(self, display_text: str):
         # Get the full path from item data
-        full_path = self.env_history_combo.currentData() or ""
+        full_path = self._normalize_path(self.env_history_combo.currentData() or "")
         self.params["fname"] = full_path
         self._update_env_style(full_path)
         self._update_env_tooltip(full_path)
 
     def _add_recent_env(self, env_path: str):
-        env_path = str(env_path).strip()
+        env_path = self._normalize_path(env_path)
         if not env_path:
             return
         envs = [env_path] + [env for env in self.recent_envs if env != env_path]
@@ -280,9 +266,7 @@ class ParamDialog(QDialog):
 
     def _update_env_tooltip(self, full_path: str):
         """Update the combo box tooltip to show the full path."""
-        self.env_history_combo.setToolTip(
-            full_path if full_path else "Recently used GEMS environment files"
-        )
+        self.env_history_combo.setToolTip(full_path if full_path else "Recently used GEMS environment files")
 
     def _persist_recent_envs(self):
         self.settings.setValue("recent_env_paths", self.recent_envs)
