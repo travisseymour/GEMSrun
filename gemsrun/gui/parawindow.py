@@ -55,6 +55,8 @@ class ParamDialog(QDialog):
     def __init__(self, params: Munch):
         super().__init__()
         self.ok = False
+        self._env_valid = False  # Track validation state explicitly
+        self._user_valid = False
         self.ui = Ui_paramDialog()
         self.ui.setupUi(self)
         self.setWindowTitle(f"GEMSrun v{__version__}")
@@ -100,6 +102,8 @@ class ParamDialog(QDialog):
 
         self._set_env_from_history(self.params.fname)
         self.ui.userLineEdit.setText(self.params.user)
+        self._user_valid = bool(self.params.user and self.params.user.strip())
+        self.ui.userLineEdit.setStyleSheet(NORMAL if self._user_valid else ERROR)
         self.ui.skipdataCheckBox.setChecked(self.params.skipdata)
         self.ui.overwriteCheckBox.setChecked(self.params.overwrite)
         self.ui.debugCheckBox.setChecked(self.params.debug)
@@ -132,16 +136,13 @@ class ParamDialog(QDialog):
         widget.setStyleSheet(NORMAL if content else ERROR)
         # update data
         if widget == self.ui.envLineEdit:
-            if not Path(content.strip()).is_file():
-                self.ui.envLineEdit.setStyleSheet(ERROR)
-            else:
-                self.ui.envLineEdit.setStyleSheet(NORMAL)
+            is_valid = Path(content.strip()).is_file()
+            self.ui.envLineEdit.setStyleSheet(NORMAL if is_valid else ERROR)
             self.params[key] = content.strip()
         elif widget == self.ui.userLineEdit:
-            if not content.strip():
-                self.ui.userLineEdit.setStyleSheet(ERROR)
-            else:
-                self.ui.userLineEdit.setStyleSheet(NORMAL)
+            is_valid = bool(content.strip())
+            self._user_valid = is_valid
+            self.ui.userLineEdit.setStyleSheet(NORMAL if is_valid else ERROR)
             self.params[key] = content.strip()
 
     def load_envfile(self):
@@ -162,20 +163,21 @@ class ParamDialog(QDialog):
         self.close()
 
     def start(self):
-        validated_widgets = (self.env_history_combo, self.ui.userLineEdit)
-        if any(widget.styleSheet() == ERROR for widget in validated_widgets):
+        if not self._env_valid or not self._user_valid:
+            # Build specific error message
+            issues = []
+            if not self._env_valid:
+                issues.append(f"Environment file not found: {self.params.fname}")
+            if not self._user_valid:
+                issues.append("User ID is empty")
             QMessageBox.warning(
                 self,
                 "Validation Alert",
-                "Please fill in missing or invalid information (red background) before pressing START "
-                "(or you can press CANCEL).",
+                "Please fix the following issues before pressing START:\n\n"
+                + "\n".join(f"• {issue}" for issue in issues),
                 QMessageBox.StandardButton.Ok,
             )
-
             return
-
-        # self.settings.value("environment_file", defaultValue="")
-        # self.settings.setValue()
 
         self._add_recent_env(self.params.fname)
         self._persist_recent_envs()
@@ -272,10 +274,9 @@ class ParamDialog(QDialog):
         self.settings.setValue("recent_env_paths", self.recent_envs)
 
     def _update_env_style(self, env_path: str):
-        if env_path and Path(env_path).is_file():
-            self.env_history_combo.setStyleSheet(NORMAL)
-        else:
-            self.env_history_combo.setStyleSheet(ERROR)
+        is_valid = bool(env_path and Path(env_path).is_file())
+        self._env_valid = is_valid
+        self.env_history_combo.setStyleSheet(NORMAL if is_valid else ERROR)
 
     def resizeEvent(self, event: QResizeEvent):
         """Update path display when dialog is resized."""
