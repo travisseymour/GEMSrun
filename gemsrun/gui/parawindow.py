@@ -268,12 +268,18 @@ class ParamDialog(QDialog):
     def _set_env_from_history(self, full_path: str):
         full_path = self._normalize_path(full_path)
         self.env_history_combo.blockSignals(True)
+
         if full_path:
             # Find by item data (full path)
             for i in range(self.env_history_combo.count()):
                 if self.env_history_combo.itemData(i) == full_path:
                     self.env_history_combo.setCurrentIndex(i)
                     break
+        elif self.env_history_combo.count() > 0:
+            # If path is empty but combo has items, select the first one
+            self.env_history_combo.setCurrentIndex(0)
+            full_path = self.env_history_combo.itemData(0) or ""
+
         self.env_history_combo.blockSignals(False)
         self.params["fname"] = full_path
         self._update_env_style(full_path)

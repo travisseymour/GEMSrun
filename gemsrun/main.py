@@ -203,6 +203,7 @@ def run(
             settings.setValue("debug", args.debug)
             settings.setValue("skipmedia", args.skipmedia)
             settings.setValue("fullscreen", args.fullscreen)
+            settings.sync()  # Ensure settings are written to disk immediately
 
             try:
                 session = ssetup.setup_session(args=args)
