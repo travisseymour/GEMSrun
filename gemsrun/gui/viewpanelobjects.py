@@ -698,7 +698,9 @@ class NavImageObject(QLabel):
         try:
             image = QImage(str(img_file))
             self.setFixedSize(image.width(), image.height())
-            style_sheet += "QLabel::hover {background-image: url(" + str(img_file) + ");}"
+            # Use forward slashes for Qt stylesheet URLs to avoid backslash escape issues on Windows
+            img_file_url = img_file.as_posix()
+            style_sheet += "QLabel::hover {background-image: url(" + img_file_url + ");}"
         except IndexError:
             self.parent().fail_dialog(
                 "Unexpected Nav Type",

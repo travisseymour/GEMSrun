@@ -54,6 +54,12 @@ def shorten_path(path: str, max_length: int) -> str:
 class ParamDialog(QDialog):
     def __init__(self, params: Munch):
         super().__init__()
+
+        import sys
+
+        if sys.platform == "win32":
+            print(f"[DEBUG] ParamDialog init: params.fname={params.fname!r}")
+
         self.ok = False
         self._env_valid = False  # Track validation state explicitly
         self._user_valid = False
@@ -66,6 +72,9 @@ class ParamDialog(QDialog):
 
         self.settings = QSettings()
         self.recent_envs: list[str] = self._load_recent_envs()
+
+        if sys.platform == "win32":
+            print(f"[DEBUG] recent_envs={self.recent_envs!r}")
 
         # load icon
         # pixmap = QtGui.QPixmap(get_resource('images', 'Icon.ico'))
@@ -297,6 +306,11 @@ class ParamDialog(QDialog):
         is_valid = bool(env_path and Path(env_path).is_file())
         self._env_valid = is_valid
         self.env_history_combo.setStyleSheet(NORMAL if is_valid else ERROR)
+
+        import sys
+
+        if sys.platform == "win32":
+            print(f"[DEBUG] _update_env_style: path={env_path!r}, is_valid={is_valid}")
 
     def resizeEvent(self, event: QResizeEvent):
         """Update path display when dialog is resized."""
