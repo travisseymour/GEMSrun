@@ -1,8 +1,16 @@
+import io
 import itertools
 from pathlib import Path
 import sys
 import threading
 import time
+
+# When running as a gui-script on Windows (pythonw.exe), stdout/stderr are None.
+# Redirect them to a null writer to prevent crashes from print() or .write() calls.
+if sys.stdout is None:
+    sys.stdout = io.StringIO()
+if sys.stderr is None:
+    sys.stderr = io.StringIO()
 
 from munch import Munch
 from PySide6.QtCore import QCoreApplication, QSettings, Qt
