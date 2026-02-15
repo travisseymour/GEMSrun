@@ -56,7 +56,9 @@ def check_media(db_filename, database, media_folder) -> tuple:
 
     # define a helper function
     def file_ok(file_name: str):
-        return (not file_name) or os.path.isfile(os.path.join(media_folder, os.path.basename(file_name)))
+        return (not file_name) or os.path.isfile(
+            os.path.join(media_folder, os.path.basename(file_name))
+        )
 
     # loop through and update outcomelist with any missing files
     for record in all_records:
@@ -108,7 +110,9 @@ def check_connectivity(url: str, timeout: float = 3.0) -> bool:
         executor = ThreadPoolExecutor(max_workers=1)
         future = executor.submit(_do_connectivity_request, url, timeout)
         result = future.result(timeout=timeout + 0.5)
-        log.debug(f"finished checking connectivity after {timeit.default_timer() - start:0.4f} sec.")
+        log.debug(
+            f"finished checking connectivity after {timeit.default_timer() - start:0.4f} sec."
+        )
         return result
     except requests.exceptions.HTTPError as e:
         if e.response is not None and e.response.status_code == 429:
@@ -117,7 +121,9 @@ def check_connectivity(url: str, timeout: float = 3.0) -> bool:
         log.warning(f"fail to check connectivity! {e}")
         return False
     except FuturesTimeoutError:
-        log.warning(f"connectivity check timed out after {timeout}s (possibly DNS resolution hung)")
+        log.warning(
+            f"connectivity check timed out after {timeout}s (possibly DNS resolution hung)"
+        )
         return False
     except (requests.exceptions.RequestException, OSError) as e:
         log.warning(f"fail to check connectivity! {e}")

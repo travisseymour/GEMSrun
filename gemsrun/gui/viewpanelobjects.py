@@ -97,10 +97,14 @@ class ViewImageObject(QLabel):
     Assumes parent is ViewPanel instance
     """
 
-    def __init__(self, parent: ViewPanel, obj_id: int, pixmap: QPixmap, scale: list[float]):
+    def __init__(
+        self, parent: ViewPanel, obj_id: int, pixmap: QPixmap, scale: list[float]
+    ):
         super().__init__(parent=parent)
         self.db: Munch = self.parent().db
-        self.object: Munch = self.db.Views[str(self.parent().view_id)].Objects[str(obj_id)]
+        self.object: Munch = self.db.Views[str(self.parent().view_id)].Objects[
+            str(obj_id)
+        ]
         self.show_name: bool = False  # would ALWAYS show name. For debug?
         self.show_bounds: bool = False  # would ALWAYS show bounds. For debug?
         self.scale = scale
@@ -179,7 +183,9 @@ class ViewImageObject(QLabel):
             return
 
         mime_data = QMimeData()
-        mime_data.setText(f"{self.object.Name}|{self.parent().view_id}|{self.object.Id}")
+        mime_data.setText(
+            f"{self.object.Name}|{self.parent().view_id}|{self.object.Id}"
+        )
 
         drag = QDrag(self)
         drag.setMimeData(mime_data)
@@ -226,7 +232,9 @@ class ViewImageObject(QLabel):
 
     def dropEvent(self, ev: QDropEvent) -> None:
         source_object_info = ev.mimeData().text()
-        source_object_name, source_view_id, source_object_id = source_object_info.split("|")
+        source_object_name, source_view_id, source_object_id = source_object_info.split(
+            "|"
+        )
         if int(source_object_id) == self.object.Id:
             # erroneously picking up us dropping onto ourselves!
             ev.ignore()
@@ -321,7 +329,8 @@ class ViewImageObject(QLabel):
         if not self.cursors_enabled:
             return
         is_clickable = any(
-            action.Enabled and action.Trigger == "MouseClick()" for action in self.object.Actions.values()
+            action.Enabled and action.Trigger == "MouseClick()"
+            for action in self.object.Actions.values()
         )
         if is_clickable and self.pointing_cursor:
             self.setCursor(self.pointing_cursor)
@@ -353,7 +362,9 @@ class ViewPocketObject(QLabel):
     def __init__(self, parent: ViewPanel, pocket_id: int):
         super().__init__(parent=parent)
         self.db: Munch = self.parent().db
-        self.object_info: Munch = Munch({"name": "", "view_id": -1, "Id": -1, "image": None})
+        self.object_info: Munch = Munch(
+            {"name": "", "view_id": -1, "Id": -1, "image": None}
+        )
         self.pocket_id: int = pocket_id
         self.pocket_image: QPixmap = QPixmap()
         self.pocket_adjust_timer: QTimer = QTimer(self)
@@ -413,7 +424,9 @@ class ViewPocketObject(QLabel):
 
         # create mime data to send to ViewImageObject that this pocket object is dropped on
         mime_data = QMimeData()
-        mime_data.setText(f"{self.object_info.name}|{self.object_info.view_id}|{self.object_info.Id}")
+        mime_data.setText(
+            f"{self.object_info.name}|{self.object_info.view_id}|{self.object_info.Id}"
+        )
         drag = QDrag(self)
         drag.setMimeData(mime_data)
 
@@ -465,7 +478,9 @@ class ViewPocketObject(QLabel):
 
     def dropEvent(self, ev: QDropEvent) -> None:
         source_object_info = ev.mimeData().text()
-        source_object_name, source_view_id, source_object_id = source_object_info.split("|")
+        source_object_name, source_view_id, source_object_id = source_object_info.split(
+            "|"
+        )
 
         if self.object_info.Id >= 0:
             if int(source_object_id) == self.object_info.Id:
@@ -473,7 +488,9 @@ class ViewPocketObject(QLabel):
                 ev.ignore()
             else:
                 # dragged view object onto non-empty pocket, just stop drag
-                log.debug(f'"{source_object_name}" was dropped on non-empty Pocket #"{self.pocket_id}"')
+                log.debug(
+                    f'"{source_object_name}" was dropped on non-empty Pocket #"{self.pocket_id}"'
+                )
 
                 log.info(
                     dict(
@@ -496,7 +513,8 @@ class ViewPocketObject(QLabel):
                 ev.accept()
 
         elif int(source_object_id) in [
-            value.object_info.Id for value in self.parent().parent().pocket_objects.values()
+            value.object_info.Id
+            for value in self.parent().parent().pocket_objects.values()
         ]:
             log.info(
                 dict(
@@ -505,7 +523,10 @@ class ViewPocketObject(QLabel):
                     View=self.parent().View.Name,
                     **gu.func_params(),
                     Source=source_object_id,
-                    Target=self.parent().parent().pocket_objects[self.pocket_id].object_info.name,
+                    Target=self.parent()
+                    .parent()
+                    .pocket_objects[self.pocket_id]
+                    .object_info.name,
                     Result="Invalid|ObjAlreadyInPocket",
                     TimeTime=self.parent().parent().task_elapsed(),
                     ViewTime=self.parent().view_elapsed(),
@@ -520,7 +541,9 @@ class ViewPocketObject(QLabel):
             ev.accept()
         else:
             # dragged view object onto empty pocket!
-            log.debug(f'"{source_object_name}" was dropped on empty Pocket #"{self.pocket_id}"')
+            log.debug(
+                f'"{source_object_name}" was dropped on empty Pocket #"{self.pocket_id}"'
+            )
 
             current_view = self.parent().db.Views.get(str(self.parent().view_id))
             source_object = None
@@ -578,7 +601,9 @@ class ViewPocketObject(QLabel):
             # self.parent().handle_object_drop(source_id=source_object_id, source_view_id=source_view_id,
             #                                  target_id=self.object.Id)
 
-            self.parent().handle_pocket_drop(dropped_object_id=source_object_id, pocket_id=self.pocket_id)
+            self.parent().handle_pocket_drop(
+                dropped_object_id=source_object_id, pocket_id=self.pocket_id
+            )
 
             ev.accept()
 
@@ -691,7 +716,9 @@ class NavImageObject(QLabel):
             )
         )
 
-        style_sheet = "QLabel{background-color: rgba(0,0,0,0%)} "  # transparent background
+        style_sheet = (
+            "QLabel{background-color: rgba(0,0,0,0%)} "  # transparent background
+        )
 
         img_file = Path(nav_image_folder, file_codex[nav_type]).resolve()
         # log.warning(f"{img_file=}; {Path(img_file).is_file()=}")
@@ -700,7 +727,9 @@ class NavImageObject(QLabel):
             self.setFixedSize(image.width(), image.height())
             # Use forward slashes for Qt stylesheet URLs to avoid backslash escape issues on Windows
             img_file_url = img_file.as_posix()
-            style_sheet += "QLabel::hover {background-image: url(" + img_file_url + ");}"
+            style_sheet += (
+                "QLabel::hover {background-image: url(" + img_file_url + ");}"
+            )
         except IndexError:
             self.parent().fail_dialog(
                 "Unexpected Nav Type",
@@ -931,7 +960,9 @@ class VideoObject(QVideoWidget):
         if self.player and not self.fallback_mode:
             self.play()
         else:
-            log.warning(f"Video {video_path.name} could not be played due to multimedia backend issues")
+            log.warning(
+                f"Video {video_path.name} could not be played due to multimedia backend issues"
+            )
 
     def play(self):
         if self.player and not self.fallback_mode:
@@ -980,7 +1011,9 @@ class VideoObject(QVideoWidget):
         super().mousePressEvent(ev)
 
         if ev.buttons() == Qt.MouseButton.RightButton:
-            log.debug(f'Movie "{self.video_path.name}" closed manually via right-click.')
+            log.debug(
+                f'Movie "{self.video_path.name}" closed manually via right-click.'
+            )
 
             log.info(
                 dict(
@@ -1069,7 +1102,9 @@ class AnimationObject(QLabel):
         super().mousePressEvent(ev)
 
         if ev.buttons() == Qt.MouseButton.RightButton:
-            log.debug(f'Movie "{self.video_path.name}" closed manually via right-click.')
+            log.debug(
+                f'Movie "{self.video_path.name}" closed manually via right-click.'
+            )
 
             log.info(
                 dict(
