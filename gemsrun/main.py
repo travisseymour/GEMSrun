@@ -138,7 +138,7 @@ def run(
 
     # Debug: Check what's actually stored in settings on Windows
     if sys.platform == "win32":
-        print(f"[DEBUG] Reading settings:")
+        print("[DEBUG] Reading settings:")
         print(f"  fname raw: {settings.value('fname')!r}")
         print(f"  fullscreen raw: {settings.value('fullscreen')!r}")
         print(f"  skipdata raw: {settings.value('skipdata')!r}")
@@ -204,8 +204,6 @@ def run(
     else:
         param_window = ParamDialog(args)
         param_window.exec()
-
-        import sys
 
         if sys.platform == "win32":
             print(f"[DEBUG] Dialog closed, param_window.ok={param_window.ok}")
