@@ -114,11 +114,15 @@ def run(
     QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.Round)
     gemsrun.APPLICATION = QApplication([])
     gemsrun.default_font = QFont("Arial", 12)
-    gemsrun.SETTINGS = QSettings()
 
+    # IMPORTANT: Set organization/app names BEFORE creating QSettings
+    # so that settings are stored in the correct registry location on Windows
     QCoreApplication.setOrganizationName("TravisSeymour")
     QCoreApplication.setOrganizationDomain("travisseymour.com")
     QCoreApplication.setApplicationName("GEMSrun")
+
+    # Now create QSettings - it will use the organization/app names set above
+    gemsrun.SETTINGS = QSettings()
 
     # Set application icon with multiple sizes for different contexts
     app_icon = QIcon()
@@ -131,6 +135,14 @@ def run(
     gemsrun.APPLICATION.setWindowIcon(app_icon)
 
     settings = gemsrun.SETTINGS
+
+    # Debug: Check what's actually stored in settings on Windows
+    if sys.platform == "win32":
+        print(f"[DEBUG] Reading settings:")
+        print(f"  fname raw: {settings.value('fname')!r}")
+        print(f"  fullscreen raw: {settings.value('fullscreen')!r}")
+        print(f"  skipdata raw: {settings.value('skipdata')!r}")
+
     args = Munch(
         {
             "fname": (cli_fname if cli_fname else settings.value("fname", defaultValue="", type=str)),
@@ -150,6 +162,9 @@ def run(
             ),
         }
     )
+
+    if sys.platform == "win32":
+        print(f"[DEBUG] After parsing: fullscreen={args.fullscreen!r}, skipdata={args.skipdata!r}")
     session: Munch | None = None
 
     if skipgui:
