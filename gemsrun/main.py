@@ -16,8 +16,13 @@ if sys.stderr is None:
 # Prevent crash from PySide6's bundled FFmpeg trying to use VA-API hardware
 # acceleration on systems where the VA-API driver is incompatible (e.g.,
 # undefined symbol: vaMapBuffer2). Software decoding is used instead.
-if sys.platform == "linux" and "LIBVA_DRIVER_NAME" not in os.environ:
-    os.environ["LIBVA_DRIVER_NAME"] = "dummy"
+if sys.platform == "linux":
+    if "LIBVA_DRIVER_NAME" not in os.environ:
+        os.environ["LIBVA_DRIVER_NAME"] = "dummy"
+    # Suppress noisy Qt/FFmpeg multimedia logging (metadata dumps, codec warnings)
+    rules = os.environ.get("QT_LOGGING_RULES", "")
+    suppress = "qt.multimedia.*=false;qt.core.qfuture.*=false"
+    os.environ["QT_LOGGING_RULES"] = f"{rules};{suppress}" if rules else suppress
 
 from munch import Munch
 from PySide6.QtCore import QCoreApplication, QSettings, Qt
