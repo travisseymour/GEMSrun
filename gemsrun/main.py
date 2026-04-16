@@ -1,5 +1,6 @@
 import io
 import itertools
+import os
 from pathlib import Path
 import sys
 import threading
@@ -11,6 +12,12 @@ if sys.stdout is None:
     sys.stdout = io.StringIO()
 if sys.stderr is None:
     sys.stderr = io.StringIO()
+
+# Prevent crash from PySide6's bundled FFmpeg trying to use VA-API hardware
+# acceleration on systems where the VA-API driver is incompatible (e.g.,
+# undefined symbol: vaMapBuffer2). Software decoding is used instead.
+if sys.platform == "linux" and "LIBVA_DRIVER_NAME" not in os.environ:
+    os.environ["LIBVA_DRIVER_NAME"] = "dummy"
 
 from munch import Munch
 from PySide6.QtCore import QCoreApplication, QSettings, Qt
