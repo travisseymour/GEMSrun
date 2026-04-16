@@ -2095,7 +2095,7 @@ class ViewPanel(QWidget):
         image.show()
         self.reset_z_pos()
 
-    def PortalTo(self, view_id: int, vid_file: str = ''):
+    def PortalTo(self, view_id: int, vid_file: str | None = ''):
         """
         This action causes GEMS to load <b><i>ViewId</i></b>. If <b><i>VidFile</i></b> is provided
         and exists, the video will play fullscreen first as a transition effect. The view change
@@ -2104,6 +2104,10 @@ class ViewPanel(QWidget):
         :scope viewobjectglobalpocket
         :mtype action
         """
+        # Normalize vid_file for backward compatibility with old PortalTo(int) calls
+        if not isinstance(vid_file, str):
+            vid_file = ''
+
         if str(view_id) not in self.db.Views:
             log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
                           Result='Invalid|ViewDoesNotExist', TimeTime=self.get_task_elapsed(),

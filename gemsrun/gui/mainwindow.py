@@ -139,7 +139,7 @@ class MainWin(QMainWindow):
 
     def _resolve_transition(self) -> str | None:
         """Return the transition_clip name, or None for instant switch."""
-        duration = int(getattr(self.options, "TransitionDuration", 400))
+        duration = int(getattr(self.options, "TransitionDuration", 400) or 400)
         if duration <= 0:
             return None
         raw = getattr(self.options, "Roomtransition", "None") or "None"
