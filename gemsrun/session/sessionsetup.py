@@ -182,16 +182,16 @@ def setup_session(args: Munch) -> Munch:
         "https://www.duckduckgo.com",
     ]
     try:
-        print("checking connectivity...")
+        print("checking connectivity...")p("conne
         url = random.choice(urls)
         has_connectivity = check_connectivity(url)
-        log.info(f"checked {url}, evaluating response...")
+        print(f"checked {url}, evaluating response...")
     except Exception as e:
-        log.warning(f"Connectivity check failed unexpectedly: {e}")
+        print(f"Connectivity check failed unexpectedly: {e}")
         has_connectivity = False
 
     if has_connectivity:
-        log.info("connectivity established!")
+        print("connectivity established!")
         database.Global.Options.TTSFolder = find_tts_folder(media_folder=media_path, temp_folder=temp_folder)
         if database.Global.Options.Preloadresources:
             try:
@@ -211,7 +211,7 @@ def setup_session(args: Munch) -> Munch:
         else:
             database.Global.Options.TTSEnabled = True
     else:
-        log.info("connectivity could not be established!")
+        print("connectivity could not be established!")
         database.Global.Options.TTSEnabled = False
         database.Global.Options.TTSFolder = None
 
