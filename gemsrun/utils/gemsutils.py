@@ -16,18 +16,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 import hashlib
 import inspect
 import os
 from pathlib import Path
 import shutil
+import socket
 import tempfile
-import timeit
+import time
 import traceback
 
 from PIL import Image
-import requests
 
 from gemsrun import log
 
@@ -86,54 +85,43 @@ def func_params():
     return res
 
 
-def _do_connectivity_request(url: str, timeout: float) -> bool:
+def check_connectivity(timeout: float = 3.0) -> bool:
     """
-    Perform the actual HTTP HEAD request. Called within a thread pool
-    so that DNS resolution hangs can be interrupted by the executor timeout.
+    Check internet connectivity by attempting a socket connection to reliable DNS servers.
+
+    This approach is faster and more robust than HTTP requests:
+    - No HTTP overhead
+    - No rate limiting concerns
+    - Uses only standard library
+    - DNS servers have very high uptime (99.999%)
     """
-    response = requests.head(url, timeout=(timeout, timeout), allow_redirects=True)
-    return response.status_code < 500
+    hosts = [
+        ("8.8.8.8", 53),  # Google DNS
+        ("1.1.1.1", 53),  # Cloudflare DNS
+        ("208.67.222.222", 53),  # OpenDNS
+    ]
 
+    log.debug("starting connectivity check...")
+    start = time.perf_counter()
 
-def check_connectivity(url: str, timeout: float = 3.0) -> bool:
-    """
-    Check internet connectivity by making a HEAD request to the given URL.
+    for host, port in hosts:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(timeout)
+                s.connect((host, port))
+                elapsed = time.perf_counter() - start
+                log.debug(
+                    f"connectivity confirmed via {host}:{port} in {elapsed:.4f} sec."
+                )
+                return True
+        except OSError:
+            continue
 
-    Uses a ThreadPoolExecutor with a hard timeout to ensure we never hang
-    longer than `timeout` seconds, even if DNS resolution stalls.
-    """
-    log.debug(f"starting to check connectivity {url}...")
-    start = timeit.default_timer()
-
-    executor = None
-    try:
-        executor = ThreadPoolExecutor(max_workers=1)
-        future = executor.submit(_do_connectivity_request, url, timeout)
-        result = future.result(timeout=timeout + 0.5)
-        log.debug(
-            f"finished checking connectivity after {timeit.default_timer() - start:0.4f} sec."
-        )
-        return result
-    except requests.exceptions.HTTPError as e:
-        if e.response is not None and e.response.status_code == 429:
-            log.debug("connectivity confirmed but remote limited requests (HTTP 429)")
-            return True
-        log.warning(f"fail to check connectivity! {e}")
-        return False
-    except FuturesTimeoutError:
-        log.warning(
-            f"connectivity check timed out after {timeout}s (possibly DNS resolution hung)"
-        )
-        return False
-    except (requests.exceptions.RequestException, OSError) as e:
-        log.warning(f"fail to check connectivity! {e}")
-        return False
-    except Exception as e:
-        log.warning(f"unexpected error during connectivity check: {e}")
-        return False
-    finally:
-        if executor is not None:
-            executor.shutdown(wait=False, cancel_futures=True)
+    elapsed = time.perf_counter() - start
+    log.warning(
+        f"connectivity check failed after {elapsed:.4f} sec (tried {len(hosts)} hosts)"
+    )
+    return False
 
 
 def string_hash(s: str) -> str:

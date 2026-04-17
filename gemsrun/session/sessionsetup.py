@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
 from pathlib import Path
-import random
 import sys
 
 from munch import Munch
@@ -52,10 +51,14 @@ def setup_data_logging(user: str, debug: bool) -> Path:
         log_format = "{message}"
 
     # setup logfile sink
-    data_path = Path.home() / "Documents" / "GEMS" / "Data"  # TODO: Add Option To Move This
+    data_path = (
+        Path.home() / "Documents" / "GEMS" / "Data"
+    )  # TODO: Add Option To Move This
     data_path.mkdir(parents=True, exist_ok=True)
     dt = datetime.strftime(datetime.now(), "%m%d%y_%H%M%S")
-    log_file = Path(data_path, f"{app_short_name}_v{__version__.replace('.', '')}_{user}_{dt}.txt")
+    log_file = Path(
+        data_path, f"{app_short_name}_v{__version__.replace('.', '')}_{user}_{dt}.txt"
+    )
 
     log.remove()
 
@@ -167,32 +170,24 @@ def setup_session(args: Munch) -> Munch:
             f"The media folder ({media_path}) is missing media required for "
             f"the GEMS environment ({args.fname}):\n{missing_media}"
         )
-        QMessageBox.critical(None, "Some Media Files Are Missing!", msg, QMessageBox.StandardButton.Ok)
+        QMessageBox.critical(
+            None, "Some Media Files Are Missing!", msg, QMessageBox.StandardButton.Ok
+        )
         return fail
 
     # Determine whether tts is going to work
-    # log.warning('TEMPORARILY DISABLED CONNECTIVITY CHECK TO AVOID SPAMMING URLS WHILST DEVELOPMENT, '
-    #                'SO NO TTS FOR NOW')
-    urls = [
-        "https://www.google.com",
-        "https://www.microsoft.com",
-        "https://www.apple.com",
-        "https://www.msn.com",
-        "https://www.yahoo.com",
-        "https://www.duckduckgo.com",
-    ]
     try:
         print("checking connectivity needed for Text-To-Speech (TTS) actions...")
-        url = random.choice(urls)
-        has_connectivity = check_connectivity(url)
-        print(f"checked {url}, evaluating response...")
+        has_connectivity = check_connectivity()
     except Exception as e:
         print(f"Connectivity check failed unexpectedly: {e}")
         has_connectivity = False
 
     if has_connectivity:
         print("connectivity established, TTS should be available.")
-        database.Global.Options.TTSFolder = find_tts_folder(media_folder=media_path, temp_folder=temp_folder)
+        database.Global.Options.TTSFolder = find_tts_folder(
+            media_folder=media_path, temp_folder=temp_folder
+        )
         if database.Global.Options.Preloadresources:
             try:
                 database.Global.Options.TTSEnabled = render_tts_from_google(db=database)
@@ -216,7 +211,9 @@ def setup_session(args: Munch) -> Munch:
         database.Global.Options.TTSFolder = None
 
     # Add some stuff to option, all of which will be exited if the db is saved back out!
-    database.Global.Options.EnvDims = get_initial_view_size(db=database, media_folder=media_path)
+    database.Global.Options.EnvDims = get_initial_view_size(
+        db=database, media_folder=media_path
+    )
     database.Global.Options.PlayMedia = not args.skipmedia
     database.Global.Options.SaveData = not args.skipdata
     database.Global.Options.User = args.user
@@ -277,7 +274,9 @@ def verify_media_folder(db_path: Path) -> Path:
             f"There does not appear to be a folder called {str(media_folder)} in the same location as {str(db_path)}!"
         )
     if not list(media_folder.glob("*.*")):
-        raise OSError(f"This environment's media folder {str(media_folder)} appears to be empty!")
+        raise OSError(
+            f"This environment's media folder {str(media_folder)} appears to be empty!"
+        )
     return media_folder
 
 
@@ -291,5 +290,7 @@ def check_media(db: Munch, media_folder: Path) -> tuple:
     image_files += [view.Overlay for view in db.Views.values()]
     image_files += [db.Global.Options.Globaloverlay]
     image_files = [img for img in image_files if img]
-    missing = [afile for afile in image_files if not Path(media_folder, afile).is_file()]
+    missing = [
+        afile for afile in image_files if not Path(media_folder, afile).is_file()
+    ]
     return tuple(set(missing))
