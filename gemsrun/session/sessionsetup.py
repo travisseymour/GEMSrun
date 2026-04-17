@@ -182,7 +182,7 @@ def setup_session(args: Munch) -> Munch:
         "https://www.duckduckgo.com",
     ]
     try:
-        print("checking connectivity...")p("conne
+        print("checking connectivity...")
         url = random.choice(urls)
         has_connectivity = check_connectivity(url)
         print(f"checked {url}, evaluating response...")
