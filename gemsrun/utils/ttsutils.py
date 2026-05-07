@@ -1,4 +1,4 @@
-import contextlib
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import chain
 from pathlib import Path
 import re
@@ -23,18 +23,13 @@ def find_tts_folder(media_folder: Path, temp_folder: Path) -> Path:
     """
     _ = media_folder  # Unused, kept for API compatibility
 
-    tts = None
-    with contextlib.suppress(Exception):
-        tts = gTTS("Hello.")
-
     try:
-        assert tts is not None
-        # Test if we can write to the temp folder
-        test_path = Path(temp_folder, "tts_test.mp3")
-        tts.save(str(test_path))
-        tts_folder = temp_folder
-        # Clean up test file
+        temp_folder.mkdir(parents=True, exist_ok=True)
+        # Test if we can write to the temp folder (no network call needed)
+        test_path = Path(temp_folder, "tts_test.tmp")
+        test_path.write_text("test")
         test_path.unlink(missing_ok=True)
+        tts_folder = temp_folder
     except Exception:
         tts_folder = Path(tempfile.gettempdir(), "gemsruntemp")
         tts_folder.mkdir(parents=True, exist_ok=True)
@@ -42,10 +37,23 @@ def find_tts_folder(media_folder: Path, temp_folder: Path) -> Path:
     return tts_folder.resolve()
 
 
+def _download_tts_mp3(speech: str, speech_hash: str, temp_folder: Path) -> Path | None:
+    """Download a single TTS phrase as mp3. Returns the mp3 path on success."""
+    temp_mp3 = temp_folder / f"speech_{speech_hash}.mp3"
+    try:
+        tts = gTTS(speech)
+        tts.save(str(temp_mp3))
+        return temp_mp3
+    except Exception as e:
+        log.warning(f"Unable to download TTS for '{speech[:30]}...': {e}")
+        return None
+
+
 def render_tts_from_google(db: Munch) -> bool:
     """
     Pre-render TTS resources and cache them as WAV files.
-    Downloads mp3 to temp folder, converts to wav in cache.
+    Downloads mp3 to temp folder in parallel, then converts to wav sequentially
+    (pygame.mixer is not thread-safe).
     """
     try:
         say_pattern = re.compile(r"\"([^\"]+)\"")
@@ -60,11 +68,12 @@ def render_tts_from_google(db: Munch) -> bool:
         )
         for view in db.Views.values():
             actions.extend(list(view.Actions.values()))
-        for view in db.Views.values():
-            objects = view.Objects.values()
-            for _object in objects:
+            for _object in view.Objects.values():
                 actions.extend(list(_object.Actions.values()))
 
+        # Collect unique phrases that need downloading (deduplicate by hash)
+        seen_hashes: set[str] = set()
+        phrases_to_download: list[tuple[str, str]] = []
         for action in actions:
             # Skip actions with variable specifiers (can't pre-render)
             if (
@@ -77,29 +86,51 @@ def render_tts_from_google(db: Munch) -> bool:
                     speech = match.group().strip().replace('"', "")
                     speech_hash = gu.string_hash(speech)
 
+                    if speech_hash in seen_hashes:
+                        continue
+                    seen_hashes.add(speech_hash)
+
                     # Skip if already cached as WAV
                     if audiocache.is_tts_cached(speech_hash):
                         log.debug(f"TTS already cached: speech_{speech_hash}.wav")
                         continue
 
-                    # Download mp3 to temp folder
-                    temp_mp3 = temp_folder / f"speech_{speech_hash}.mp3"
-                    try:
-                        tts = gTTS(speech)
-                        tts.save(str(temp_mp3))
-                    except Exception as e:
-                        log.warning(
-                            f"Unable to download TTS for action {action.Action}: {e}"
-                        )
-                        continue
+                    phrases_to_download.append((speech, speech_hash))
 
-                    # Convert to WAV and cache
-                    cached_wav = audiocache.cache_tts_from_mp3(temp_mp3, speech_hash)
-                    if cached_wav:
-                        log.debug(
-                            f"Pre-rendered TTS: {speech[:30]}... -> {cached_wav.name}"
-                        )
+        if not phrases_to_download:
+            return True
 
+        print(f"downloading {len(phrases_to_download)} TTS phrase(s)...")
+
+        # Phase 1: Download mp3s in parallel (network I/O, thread-safe)
+        downloaded: list[tuple[Path, str]] = []
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {
+                executor.submit(_download_tts_mp3, speech, speech_hash, temp_folder): (
+                    speech,
+                    speech_hash,
+                )
+                for speech, speech_hash in phrases_to_download
+            }
+            for future in as_completed(futures):
+                speech, speech_hash = futures[future]
+                mp3_path = future.result()
+                if mp3_path is not None:
+                    downloaded.append((mp3_path, speech_hash))
+
+        # Phase 2: Convert to WAV sequentially (pygame.mixer is not thread-safe)
+        for mp3_path, speech_hash in downloaded:
+            cached_wav = audiocache.cache_tts_from_mp3(mp3_path, speech_hash)
+            if cached_wav:
+                log.debug(
+                    f"Pre-rendered TTS: speech_{speech_hash} -> {cached_wav.name}"
+                )
+            # Clean up temp mp3
+            mp3_path.unlink(missing_ok=True)
+
+        print(
+            f"TTS pre-rendering complete ({len(downloaded)}/{len(phrases_to_download)})."
+        )
         return True
     except Exception as e:
         log.debug(f"Got exception trying to pre-render tts: {e}")

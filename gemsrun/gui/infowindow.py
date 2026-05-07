@@ -104,10 +104,7 @@ class InfoDialog(QtWidgets.QDialog):
         other_info = {
             "Total Views": len(self.db.Views),
             "Total Objects": sum(len(view.Objects) for view in self.db.Views.values()),
-            "Total Actions": sum(
-                len(action)
-                for action in [view.Actions for view in self.db.Views.values()]
-            ),
+            "Total Actions": sum(len(view.Actions) for view in self.db.Views.values()),
         }
 
         # add info from global options

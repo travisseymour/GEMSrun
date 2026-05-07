@@ -189,6 +189,7 @@ def setup_session(args: Munch) -> Munch:
             media_folder=media_path, temp_folder=temp_folder
         )
         if database.Global.Options.Preloadresources:
+            print("pre-rendering TTS resources...")
             try:
                 database.Global.Options.TTSEnabled = render_tts_from_google(db=database)
             except Exception as e:

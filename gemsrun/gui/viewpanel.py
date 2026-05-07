@@ -972,10 +972,6 @@ class ViewPanel(QWidget):
             video_object.close()
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        try:
-            self.ttimer.stop()
-        except Exception:
-            ...
 
         if self.sleep_event_loop.isRunning():
             self.sleep_event_loop.quit()
@@ -1852,10 +1848,15 @@ class ViewPanel(QWidget):
         """
         try:
             # could be in any view!
+            found = False
             for view in self.db.Views.values():
                 for _object in view.Objects.values():
                     if _object.Id == object_id:
                         self.db.Views[str(view.Id)].Objects[str(object_id)].Visible = True
+                        found = True
+                        break
+                if found:
+                    break
         except Exception as e:
             if not skiplog:
                 log.info(dict(Kind='Action', Type='ShowObject', View=self.View.Name,
@@ -1884,10 +1885,15 @@ class ViewPanel(QWidget):
         # now actually attempt to hide it
         try:
             # could be in any view!
+            found = False
             for view in self.db.Views.values():
                 for _object in view.Objects.values():
                     if _object.Id == object_id:
                         self.db.Views[str(view.Id)].Objects[str(object_id)].Visible = False
+                        found = True
+                        break
+                if found:
+                    break
         except Exception as e:
             if not skiplog:
                 log.info(dict(Kind='Action', Type='HideObject', View=self.View.Name,
@@ -1910,10 +1916,15 @@ class ViewPanel(QWidget):
         """
         try:
             # could be in any view!
+            found = False
             for view in self.db.Views.values():
                 for _object in view.Objects.values():
                     if _object.Id == object_id:
                         self.db.Views[str(view.Id)].Objects[str(object_id)].Takeable = True
+                        found = True
+                        break
+                if found:
+                    break
             log.info(dict(Kind='Action', Type='AllowTake', View=self.View.Name,
                           **gu.func_params(), Target=None, Result='Valid',
                           TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
@@ -1931,10 +1942,15 @@ class ViewPanel(QWidget):
         """
         try:
             # could be in any view!
+            found = False
             for view in self.db.Views.values():
                 for _object in view.Objects.values():
                     if _object.Id == object_id:
                         self.db.Views[str(view.Id)].Objects[str(object_id)].Takeable = False
+                        found = True
+                        break
+                if found:
+                    break
             log.info(dict(Kind='Action', Type='DisallowTake', View=self.View.Name,
                           **gu.func_params(), Target=None, Result='Valid',
                           TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
