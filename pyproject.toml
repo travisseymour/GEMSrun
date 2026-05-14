@@ -18,7 +18,7 @@ version = "2026.5.14.1"
 authors = [{name = "Travis L. Seymour, PhD", email = "nogard@ucsc.edu"}]
 license = {text = "GPLv3"}
 readme = "ReadMe.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11,<3.15"
 keywords = ["VR", "graphical", "environment", "runner"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -41,7 +41,7 @@ dependencies = [
   "munch>=4.0.0,<5.0.0",
   "playsound3>=3.0.0,<4.0.0",
   "typer>=0.12.5,<1.0.0",
-  "pygame>=2.0.0,<3.0.0",
+  "pygame-ce>=2.5.0,<3.0.0",
   "requests>=2.32.0,<3.0.0"
 ]
 
