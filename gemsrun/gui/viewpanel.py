@@ -67,6 +67,31 @@ from gemsrun.utils.safestrfunc import func_str_parts, get_param, is_safe_value
 if TYPE_CHECKING:  # Avoid circular import at runtime
     from .mainwindow import MainWin
 
+
+def parse_linked_object_name(object_name: str) -> tuple[int, int] | None:
+    """
+    Parse an object name to check if it references another object's actions.
+
+    Objects with names ending in `_[VIEWID]_[OBJECTID]` (e.g., `Doorknob_3_7`)
+    will use the actions from the referenced object (object 7 in view 3).
+
+    Args:
+        object_name: The name of the object to check
+
+    Returns:
+        A tuple of (view_id, object_id) if the name matches the pattern, or None
+    """
+    if not object_name:
+        return None
+    pattern = r"^.+_(\d+)_(\d+)$"
+    match = re.match(pattern, object_name)
+    if match:
+        view_id = int(match.group(1))
+        object_id = int(match.group(2))
+        return (view_id, object_id)
+    return None
+
+
 VALID_CONDITIONS = [
     "VarValueIs",
     "VarValueIsNot",
@@ -1088,6 +1113,42 @@ class ViewPanel(QWidget):
         )
         return None
 
+    def _get_object_actions(self, obj: Munch) -> list:
+        """
+        Get the actions for an object, resolving linked object references.
+
+        If the object's name ends with `_[VIEWID]_[OBJECTID]` (e.g., `Doorknob_3_7`),
+        returns the actions from the referenced object instead.
+
+        Args:
+            obj: The Munch object representing the object
+
+        Returns:
+            List of actions (either from the object itself or the linked source)
+        """
+        linked_ref = parse_linked_object_name(obj.Name)
+        if linked_ref:
+            source_view_id, source_object_id = linked_ref
+            try:
+                source_view = self.db.Views.get(str(source_view_id))
+                if source_view:
+                    source_object = source_view.Objects.get(str(source_object_id))
+                    if source_object and source_object.Actions:
+                        log.debug(
+                            f"Object '{obj.Name}' using linked actions from view {source_view_id}, object {source_object_id}"
+                        )
+                        return list(source_object.Actions.values())
+                log.warning(
+                    f"Object '{obj.Name}' has linked reference to view {source_view_id}, object {source_object_id}, "
+                    "but the source was not found. Using object's own actions."
+                )
+            except (KeyError, AttributeError) as e:
+                log.warning(
+                    f"Object '{obj.Name}' has linked reference but source lookup failed: {e}. "
+                    "Using object's own actions."
+                )
+        return list(obj.Actions.values()) if obj.Actions else []
+
     def do_action(self, condition: str, action: str):
         log.debug(
             f"do_action fired for view {self.view_id} at vt+ {timeit.default_timer() - self.view_start_time:.3f}s, action: {action}"
@@ -1099,7 +1160,8 @@ class ViewPanel(QWidget):
         # find the object that got clicked
         _object = self.View.Objects[str(object_id)]
 
-        for action in _object.Actions.values():
+        # Use helper to resolve linked object actions if applicable
+        for action in self._get_object_actions(_object):
             if action.Enabled and action.Trigger == "MouseClick()":
                 self.do_action(action.Condition, action.Action)
 
@@ -1246,10 +1308,13 @@ class ViewPanel(QWidget):
         source_object = self.db.Views[str(_source_view_id)].Objects[str(source_id)]
         target_object = self.db.Views[str(self.view_id)].Objects[str(target_id)]
 
+        # Use helper to resolve linked object actions if applicable
+        target_actions = self._get_object_actions(target_object)
+
         trigger = f"DroppedOn({source_object.Id})"
         valid_drop = any(
             action
-            for action in target_object.Actions.values()
+            for action in target_actions
             if action.Enabled and action.Trigger.replace(" ", "") == trigger
         )
 
@@ -1283,7 +1348,7 @@ class ViewPanel(QWidget):
             )
             return
 
-        for action in target_object.Actions.values():
+        for action in target_actions:
             if action.Enabled and action.Trigger.replace(" ", "") == trigger:
                 self.do_action(action.Condition, action.Action)
 
