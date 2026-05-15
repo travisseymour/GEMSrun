@@ -29,8 +29,6 @@ It limits arguments to constants of basic types such as ints, float, strings, et
 but only those that only contain constants (checks recursively).
 """
 
-FUNK_PATTERN = re.compile(r"(\w+)\((.*?), (.*?)\)$")
-
 
 def get_param(param: str) -> str:
     """
@@ -84,11 +82,16 @@ def func_str_parts(cmd: str) -> tuple[str, list[str]]:
     returns
     'OpenDoor', ["key='home'", 'knob_right=True', 'combination=[3,4,2,3]']
     """
-    func_pattern = re.compile(r"(\w+)\s*\((.*?)\)$")
+    # Use re.DOTALL so . matches newlines (YAML multi-line strings may contain them)
+    func_pattern = re.compile(r"(\w+)\s*\((.*)\)$", re.DOTALL)
     split_pattern = regex.compile(r'"[^"]*"(*SKIP)(*FAIL)|,\s*')
 
+    # Normalize whitespace: collapse newlines/tabs/multiple spaces to single space
+    # This handles YAML multi-line strings that span multiple lines
+    normalized_cmd = re.sub(r'\s+', ' ', cmd.strip())
+
     # Only replace brackets outside of quoted strings to preserve variable specifiers
-    prepped = _replace_brackets_outside_quotes(cmd.strip(), '"(LEFT) ', ' (RIGHT)"')
+    prepped = _replace_brackets_outside_quotes(normalized_cmd, '"(LEFT) ', ' (RIGHT)"')
     func = func_pattern.fullmatch(prepped)
     if func is None:
         raise ValueError(f"String is not a valid function call: {cmd!r}")
