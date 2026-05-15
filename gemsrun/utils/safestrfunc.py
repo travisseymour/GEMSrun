@@ -88,7 +88,7 @@ def func_str_parts(cmd: str) -> tuple[str, list[str]]:
 
     # Normalize whitespace: collapse newlines/tabs/multiple spaces to single space
     # This handles YAML multi-line strings that span multiple lines
-    normalized_cmd = re.sub(r'\s+', ' ', cmd.strip())
+    normalized_cmd = re.sub(r"\s+", " ", cmd.strip())
 
     # Only replace brackets outside of quoted strings to preserve variable specifiers
     prepped = _replace_brackets_outside_quotes(normalized_cmd, '"(LEFT) ', ' (RIGHT)"')
