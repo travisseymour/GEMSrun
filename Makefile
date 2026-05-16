@@ -30,7 +30,6 @@ uninstall:
 format:
 	ruff check gemsrun --fix
 	ruff format gemsrun
-	black gemsrun
 
 build:
 	python -m build
