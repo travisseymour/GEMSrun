@@ -856,9 +856,10 @@ class ViewPanel(QWidget):
 
     def start_timers(self):
         """Launch timers for any view or env actions with timed triggers"""
-        # first check any global timers
+        # first check any global timers (sorted by RowOrder for predictable execution)
         for action in chain(
-            self.db.Global.GlobalActions.values(), self.View.Actions.values()
+            sorted(self.db.Global.GlobalActions.values(), key=lambda a: a.RowOrder),
+            sorted(self.View.Actions.values(), key=lambda a: a.RowOrder),
         ):
             if not action.Enabled:
                 continue
@@ -949,13 +950,16 @@ class ViewPanel(QWidget):
         log.debug("Pockets reloaded.")
 
     def create_nav_pics(self):
-        # create all the nave images
+        # create all the nav images
         for nav_type in ("NavLeft", "NavRight", "NavTop", "NavBottom"):
-            actions = [
-                action
-                for action in self.View.Actions.values()
-                if action.Trigger.startswith(nav_type)
-            ]
+            actions = sorted(
+                [
+                    action
+                    for action in self.View.Actions.values()
+                    if action.Trigger.startswith(nav_type)
+                ],
+                key=lambda a: a.RowOrder,
+            )
             if actions:
                 nav_pic = NavImageObject(
                     self,
@@ -1165,7 +1169,8 @@ class ViewPanel(QWidget):
                         log.debug(
                             f"Object '{obj.Name}' using linked actions from view {source_view_id}, object {source_object_id}"
                         )
-                        return list(source_object.Actions.values())
+                        # Sort by RowOrder to ensure predictable execution order
+                        return sorted(source_object.Actions.values(), key=lambda a: a.RowOrder)
                 log.warning(
                     f"Object '{obj.Name}' has linked reference to view {source_view_id}, object {source_object_id}, "
                     "but the source was not found. Using object's own actions."
@@ -1175,7 +1180,8 @@ class ViewPanel(QWidget):
                     f"Object '{obj.Name}' has linked reference but source lookup failed: {e}. "
                     "Using object's own actions."
                 )
-        return list(obj.Actions.values()) if obj.Actions else []
+        # Sort by RowOrder to ensure predictable execution order
+        return sorted(obj.Actions.values(), key=lambda a: a.RowOrder) if obj.Actions else []
 
     def do_action(self, condition: str, action: str):
         log.debug(
@@ -1428,7 +1434,8 @@ class ViewPanel(QWidget):
         if key_name != key_text:
             triggers_to_check.append(f'KeyPress("{key_name}")')
 
-        for action in self.View.Actions.values():
+        # Sort by RowOrder for predictable execution order
+        for action in sorted(self.View.Actions.values(), key=lambda a: a.RowOrder):
             if action.Enabled and action.Trigger in triggers_to_check:
                 self.do_action(action.Condition, action.Action)
 
@@ -2535,6 +2542,7 @@ class ViewPanel(QWidget):
         if target:
             pos = target.pos()
             size = target.size()
+            polygon_points = getattr(target, "polygon_points", [])
             target.hide()
         else:
             log.warning(
@@ -2543,14 +2551,17 @@ class ViewPanel(QWidget):
             )
             pos = QPoint(0, 0)
             size = None
+            polygon_points = []
 
         try:
             if is_gif:
                 video = AnimationObject(self, video_path=video_path, pos=pos, size=size, start=start,
-                                        volume=self.options.Volume * volume * 1000, loop=loop)
+                                        volume=self.options.Volume * volume * 1000, loop=loop,
+                                        polygon_points=polygon_points)
             else:
                 video = VideoObject(self, video_path=video_path, pos=pos, size=size, start=start,
-                                    volume=self.options.Volume * volume * 1000, loop=loop)
+                                    volume=self.options.Volume * volume * 1000, loop=loop,
+                                    polygon_points=polygon_points)
             self.video_controls[video_name] = video
 
             self.reset_z_pos()

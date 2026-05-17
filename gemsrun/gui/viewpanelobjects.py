@@ -244,6 +244,39 @@ class ViewImageObject(QLabel):
         if self.show_bounds or (self.hovered and "Frame" in self.db.Global.Options.ObjectHover):
             show_frame()
 
+    def _create_polygon_clipped_pixmap(self, source: QPixmap) -> QPixmap:
+        """Create a polygon-clipped version of the source pixmap with transparency outside the polygon."""
+        if not self.polygon_points or source.isNull():
+            return source
+
+        # Create result pixmap with transparency
+        result = QPixmap(source.size())
+        result.fill(QColor(0, 0, 0, 0))
+
+        # Convert global polygon points to local widget coordinates
+        geom = self.geometry()
+        local_points = [
+            [p[0] - geom.x(), p[1] - geom.y()]
+            for p in self.polygon_points
+        ]
+
+        # Create painter path for clipping
+        path = QPainterPath()
+        if local_points:
+            path.moveTo(local_points[0][0], local_points[0][1])
+            for p in local_points[1:]:
+                path.lineTo(p[0], p[1])
+            path.closeSubpath()
+
+        # Draw source pixmap clipped to polygon
+        painter = QPainter(result)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setClipPath(path)
+        painter.drawPixmap(0, 0, source)
+        painter.end()
+
+        return result
+
     def mouseMoveEvent(self, ev: QMouseEvent) -> None:
         if ev.buttons() != Qt.MouseButton.LeftButton or not self.object.Draggable:
             return
@@ -256,9 +289,14 @@ class ViewImageObject(QLabel):
         drag = QDrag(self)
         drag.setMimeData(mime_data)
         hotspot = ev.pos() - self.rect().topLeft()
+
+        # Get base pixmap and apply polygon clipping for non-rectangular objects
+        base_pixmap = self.pixmap()
+        if self.polygon_points:
+            base_pixmap = self._create_polygon_clipped_pixmap(base_pixmap)
+
         # scale drag image to ~95% of pocket size for easier drops
         pocket = getattr(self.parent(), "pocket_bitmap", None)
-        base_pixmap = self.pixmap()
         if pocket and not base_pixmap.isNull():
             target_w = int(pocket.width() * 0.95)
             target_h = int(pocket.height() * 0.95)
@@ -344,7 +382,8 @@ class ViewImageObject(QLabel):
                 )
             )
 
-            for action in self.object.Actions.values():
+            # Sort by RowOrder for predictable execution order
+            for action in sorted(self.object.Actions.values(), key=lambda a: a.RowOrder):
                 if action.Enabled and action.Trigger == "MouseClick()":
                     self.parent().do_action(action.Condition, action.Action)
 
@@ -370,7 +409,8 @@ class ViewImageObject(QLabel):
             )
 
             # TODO: add action trigger for "MouseHover()" to editor!
-            for action in self.object.Actions.values():
+            # Sort by RowOrder for predictable execution order
+            for action in sorted(self.object.Actions.values(), key=lambda a: a.RowOrder):
                 if action.Enabled and action.Trigger == "MouseHover()":
                     self.parent().do_action(action.Condition, action.Action)
 
@@ -1025,6 +1065,7 @@ class VideoObject(QVideoWidget):
         volume: float = 1.0,
         loop: bool = False,
         on_finish: callable = None,
+        polygon_points: list | None = None,
     ):
         super().__init__(parent=parent)
         self.video_path: Path = video_path
@@ -1032,6 +1073,7 @@ class VideoObject(QVideoWidget):
         self.audio_output = None
         self.fallback_mode = False
         self.on_finish = on_finish
+        self.polygon_points = polygon_points or []
 
         if loop:
             log.warning(
@@ -1077,6 +1119,10 @@ class VideoObject(QVideoWidget):
         self.show()
         self.activateWindow()
         self.raise_()
+
+        # Apply polygon mask if we have polygon points
+        if self.polygon_points:
+            self._set_polygon_mask()
 
         # Only attempt to play if we have a working player
         if self.player and not self.fallback_mode:
@@ -1129,6 +1175,25 @@ class VideoObject(QVideoWidget):
         self.stop()
         event.accept()
 
+    def _set_polygon_mask(self):
+        """Set a mask on the video widget so only the polygon area is visible."""
+        if not self.polygon_points:
+            return
+
+        # Get widget geometry to calculate local polygon coordinates
+        geom = self.geometry()
+
+        # Convert global polygon points to local widget coordinates
+        local_points = [
+            QPoint(p[0] - geom.x(), p[1] - geom.y())
+            for p in self.polygon_points
+        ]
+
+        # Create polygon and set as mask
+        polygon = QPolygon(local_points)
+        region = QRegion(polygon)
+        self.setMask(region)
+
     def mousePressEvent(self, ev: QMouseEvent) -> None:
         super().mousePressEvent(ev)
 
@@ -1171,10 +1236,12 @@ class AnimationObject(QLabel):
         volume: float = 1.0,
         loop: bool = False,
         on_finish: callable = None,
+        polygon_points: list | None = None,
     ):
         super().__init__(parent=parent)
         self.video_path: Path = video_path
         self.on_finish = on_finish
+        self.polygon_points = polygon_points or []
 
         style_sheet = "QLabel{ background-color: rgba(0,0,0,0%); }"
         self.setStyleSheet(style_sheet)
@@ -1198,6 +1265,10 @@ class AnimationObject(QLabel):
         self.activateWindow()
         self.raise_()
 
+        # Apply polygon mask if we have polygon points
+        if self.polygon_points:
+            self._set_polygon_mask()
+
     def _on_movie_finished(self):
         """Called when the animation finishes playing."""
         if self.on_finish:
@@ -1219,6 +1290,25 @@ class AnimationObject(QLabel):
     def closeEvent(self, event: QCloseEvent) -> None:
         self.stop()
         event.accept()
+
+    def _set_polygon_mask(self):
+        """Set a mask on the animation widget so only the polygon area is visible."""
+        if not self.polygon_points:
+            return
+
+        # Get widget geometry to calculate local polygon coordinates
+        geom = self.geometry()
+
+        # Convert global polygon points to local widget coordinates
+        local_points = [
+            QPoint(p[0] - geom.x(), p[1] - geom.y())
+            for p in self.polygon_points
+        ]
+
+        # Create polygon and set as mask
+        polygon = QPolygon(local_points)
+        region = QRegion(polygon)
+        self.setMask(region)
 
     def mousePressEvent(self, ev: QMouseEvent) -> None:
         super().mousePressEvent(ev)
