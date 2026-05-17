@@ -47,7 +47,10 @@ from PySide6.QtGui import (
     QMouseEvent,
     QMovie,
     QPainter,
+    QPainterPath,
     QPixmap,
+    QPolygon,
+    QRegion,
 )
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtMultimediaWidgets import QVideoWidget
@@ -98,21 +101,52 @@ class ViewImageObject(QLabel):
     """
 
     def __init__(
-        self, parent: ViewPanel, obj_id: int, pixmap: QPixmap, scale: list[float]
+        self,
+        parent: ViewPanel,
+        obj_id: int,
+        pixmap: QPixmap,
+        scale: list[float],
+        polygon_points: list | None = None,
     ):
         super().__init__(parent=parent)
         self.db: Munch = self.parent().db
         self.object: Munch = self.db.Views[str(self.parent().view_id)].Objects[
             str(obj_id)
         ]
-        self.show_name: bool = False  # would ALWAYS show name. For debug?
-        self.show_bounds: bool = False  # would ALWAYS show bounds. For debug?
+        # Enable debug visualization based on Debug option
+        debug_mode = getattr(self.db.Global.Options, "Debug", False)
+        self.show_name: bool = bool(debug_mode)
+        self.show_bounds: bool = bool(debug_mode)
         self.scale = scale
+        self.polygon_points = polygon_points or []
+        self._mask_needs_update = bool(self.polygon_points)  # Flag for deferred mask setup
 
-        self.setVisible(self.object.Visible)
+        # Check if this is an invisible object with click actions (hotspot)
+        has_click_action = any(
+            action.Enabled and action.Trigger == "MouseClick()"
+            for action in self.object.Actions.values()
+        )
 
-        self.setPixmap(pixmap)
+        if self.object.Visible:
+            # Visible object - show normally
+            self.setVisible(True)
+            self.setPixmap(pixmap)
+        elif has_click_action:
+            # Invisible hotspot - keep widget visible but fully transparent
+            self.setVisible(True)
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+            self.setStyleSheet("background: transparent;")
+            # Use a transparent pixmap
+            transparent_pixmap = QPixmap(pixmap.size())
+            transparent_pixmap.fill(QColor(0, 0, 0, 0))
+            self.setPixmap(transparent_pixmap)
+        else:
+            # Invisible with no click action - hide completely
+            self.setVisible(False)
+            self.setPixmap(pixmap)
         self.pixmax_size = QSize(pixmap.width(), pixmap.height())
+
+        # Note: Polygon mask is set in setGeometry() after geometry is established
 
         self.hover_tracker = HoverTracker(self)
         self.hover_tracker.hover_event.connect(self.on_hover_change)
@@ -142,6 +176,35 @@ class ViewImageObject(QLabel):
         if style_sheet:
             self.setStyleSheet(style_sheet)
 
+    def setGeometry(self, *args):
+        """Override setGeometry to set polygon mask after geometry is established."""
+        super().setGeometry(*args)
+        # Now that geometry is set, apply the polygon mask if needed
+        if self._mask_needs_update:
+            self._set_polygon_mask()
+            self._mask_needs_update = False
+
+    def _set_polygon_mask(self):
+        """Set a mask on the widget so only polygon area receives mouse events."""
+        if not self.polygon_points:
+            return
+
+        # Get widget geometry to calculate local polygon coordinates
+        geom = self.geometry()
+
+        # Convert global polygon points to local widget coordinates
+        local_points = [
+            QPoint(p[0] - geom.x(), p[1] - geom.y())
+            for p in self.polygon_points
+        ]
+
+        # Create polygon and region for masking
+        polygon = QPolygon(local_points)
+        region = QRegion(polygon)
+
+        # Set the mask - only this region will receive mouse events
+        self.setMask(region)
+
     def paintEvent(self, event):
         super().paintEvent(event)
         painter = QPainter(self)
@@ -158,25 +221,28 @@ class ViewImageObject(QLabel):
             painter.drawText(name_rect, Qt.AlignmentFlag.AlignLeft, self.object.Name)
 
         def show_frame():
-            r = self.rect()
-            x = r.left()
-            y = r.top()
-            w = r.width()
-            h = r.height()
+            # Draw the actual polygon outline instead of a rectangle
+            if self.polygon_points:
+                geom = self.geometry()
+                local_points = [
+                    QPoint(p[0] - geom.x(), p[1] - geom.y())
+                    for p in self.polygon_points
+                ]
+                polygon = QPolygon(local_points)
+                painter.setPen(QColor("yellow"))
+                painter.drawPolygon(polygon)
+            else:
+                # Fallback to rectangle if no polygon points
+                r = self.rect()
+                painter.setPen(QColor("yellow"))
+                painter.drawRect(QRect(r.left(), r.top(), r.width() - 1, r.height() - 1))
 
-            painter.setPen(QColor("yellow"))
-            painter.drawRect(QRect(x, y, w - 1, h - 1))
-
-        if not self.hovered:
-            if self.show_name:
-                show_frame()
-            if self.show_bounds:
-                show_frame()
-        else:
-            if "Name" in self.db.Global.Options.ObjectHover:
-                show_name()
-            if "Frame" in self.db.Global.Options.ObjectHover:
-                show_frame()
+        # In debug mode (show_name/show_bounds True), always draw
+        # Otherwise, only draw on hover if ObjectHover options specify
+        if self.show_name or (self.hovered and "Name" in self.db.Global.Options.ObjectHover):
+            show_name()
+        if self.show_bounds or (self.hovered and "Frame" in self.db.Global.Options.ObjectHover):
+            show_frame()
 
     def mouseMoveEvent(self, ev: QMouseEvent) -> None:
         if ev.buttons() != Qt.MouseButton.LeftButton or not self.object.Draggable:
@@ -376,12 +442,26 @@ class ViewPocketObject(QLabel):
         self._apply_cursor()
 
     def init_pocket_image(self):
-        if not self.object_info.image:
-            bitmap = self.parent().pocket_bitmap
-            self.pocket_image = QPixmap().fromImage(bitmap)
-            self.object_info.image = bitmap
+        # Get the empty pocket background
+        pocket_bg = self.parent().pocket_bitmap
+
+        if not self.object_info.image or self.object_info.name == "":
+            # Empty pocket - just show the pocket background
+            self.pocket_image = QPixmap().fromImage(pocket_bg)
+            self.object_info.image = pocket_bg
         else:
-            self.pocket_image = QPixmap().fromImage(self.object_info.image)
+            # Pocket has an object - composite object image on top of pocket background
+            # This ensures transparent areas of polygon objects show the pocket background
+            self.pocket_image = QPixmap().fromImage(pocket_bg)
+            object_pixmap = QPixmap().fromImage(self.object_info.image)
+
+            # Center the object image on the pocket background
+            painter = QPainter(self.pocket_image)
+            x_offset = (self.pocket_image.width() - object_pixmap.width()) // 2
+            y_offset = (self.pocket_image.height() - object_pixmap.height()) // 2
+            painter.drawPixmap(x_offset, y_offset, object_pixmap)
+            painter.end()
+
         self.setPixmap(self.pocket_image)
         self.show()
 
@@ -397,6 +477,38 @@ class ViewPocketObject(QLabel):
                 self.parent().height() - self.pocket_image.height() - 5,
             )
         )
+
+    def _create_polygon_clipped_pixmap(self, source: QPixmap, polygon_points: list, geometry: QRect) -> QPixmap:
+        """Create a polygon-clipped version of the source pixmap with transparency outside the polygon."""
+        if not polygon_points or source.isNull():
+            return source
+
+        # Create result pixmap with transparency
+        result = QPixmap(source.size())
+        result.fill(QColor(0, 0, 0, 0))
+
+        # Convert global polygon points to local widget coordinates
+        local_points = [
+            [p[0] - geometry.x(), p[1] - geometry.y()]
+            for p in polygon_points
+        ]
+
+        # Create painter path for clipping
+        path = QPainterPath()
+        if local_points:
+            path.moveTo(local_points[0][0], local_points[0][1])
+            for p in local_points[1:]:
+                path.lineTo(p[0], p[1])
+            path.closeSubpath()
+
+        # Draw source pixmap clipped to polygon
+        painter = QPainter(result)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setClipPath(path)
+        painter.drawPixmap(0, 0, source)
+        painter.end()
+
+        return result
 
     # def paintEvent(self, event):
     #     super(ViewPocketObject, self).paintEvent(event)
@@ -581,17 +693,27 @@ class ViewPocketObject(QLabel):
                 )
             )
 
+            # Get polygon points from dragging object for clipping
+            dragging_obj = self.parent().dragging_object
+            polygon_points = getattr(dragging_obj, "polygon_points", [])
+
+            # Create the object image, polygon-clipped if we have points
+            base_pixmap = dragging_obj.pixmap().copy()
+            if polygon_points:
+                # Create polygon-clipped version for proper transparency
+                clipped_pixmap = self._create_polygon_clipped_pixmap(
+                    base_pixmap, polygon_points, dragging_obj.geometry()
+                )
+                object_image = pixmap_to_pointer(clipped_pixmap, 100, 90, keep_aspect_ratio=False).toImage()
+            else:
+                object_image = pixmap_to_pointer(base_pixmap, 100, 90, keep_aspect_ratio=False).toImage()
+
             self.object_info = Munch(
                 {
                     "name": source_object_name,
                     "view_id": int(source_view_id),
                     "Id": int(source_object_id),
-                    "image": pixmap_to_pointer(
-                        self.parent().dragging_object.pixmap().copy(),
-                        100,
-                        90,
-                        keep_aspect_ratio=False,
-                    ).toImage(),
+                    "image": object_image,
                 }
             )
             self.init_pocket_image()

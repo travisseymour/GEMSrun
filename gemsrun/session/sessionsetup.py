@@ -32,7 +32,26 @@ from gemsrun.utils.gemsutils import (
     func_name,
     get_image_dims,
 )
+from gemsrun.utils.polygon_utils import has_old_style_bounds
 from gemsrun.utils.ttsutils import find_tts_folder, render_tts_from_google
+
+
+def check_old_style_object_bounds(database: Munch) -> list[str]:
+    """
+    Check if any objects in the database use old-style rectangular bounds
+    (Left, Top, Width, Height) instead of polygon Points.
+
+    Returns:
+        List of object descriptions that have old-style bounds, or empty list if all are migrated.
+    """
+    old_style = []
+    for view_id, view in database.Views.items():
+        if not view.get("Objects"):
+            continue
+        for obj_id, obj in view.Objects.items():
+            if has_old_style_bounds(obj):
+                old_style.append(f"View {view_id} ({view.Name}): Object {obj_id} ({obj.Name})")
+    return old_style
 
 
 def setup_data_logging(user: str, debug: bool) -> Path:
@@ -137,6 +156,25 @@ def setup_session(args: Munch) -> Munch:
             None,
             "Error Loading GEMS Environment",
             f"Unable to load GEMS Environment from {args.fname}\n{e}",
+            QMessageBox.StandardButton.Ok,
+        )
+        return fail
+
+    # Check for old-style rectangular object bounds (Left/Top/Width/Height)
+    # New environments use polygon Points instead
+    old_style_objects = check_old_style_object_bounds(database)
+    if old_style_objects:
+        obj_list = "\n".join(old_style_objects[:10])  # Show first 10
+        if len(old_style_objects) > 10:
+            obj_list += f"\n... and {len(old_style_objects) - 10} more"
+        QMessageBox.critical(
+            None,
+            "Environment Needs Migration",
+            f"This environment uses old-style rectangular object bounds "
+            f"(Left, Top, Width, Height) instead of polygon Points.\n\n"
+            f"Objects with old bounds:\n{obj_list}\n\n"
+            f"Please open this environment in GEMSedit and save it to convert "
+            f"to the new polygon format.",
             QMessageBox.StandardButton.Ok,
         )
         return fail

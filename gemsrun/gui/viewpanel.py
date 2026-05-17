@@ -62,6 +62,7 @@ from gemsrun.gui.viewpanelobjects import (
 from gemsrun.gui.viewpanelutils import get_custom_cursors
 from gemsrun.utils import audiocache, audioutils, gemsutils as gu
 from gemsrun.utils.apputils import get_resource
+from gemsrun.utils.polygon_utils import json_to_points, points_to_bounding_rect, scale_points
 from gemsrun.utils.safestrfunc import func_str_parts, get_param, is_safe_value
 
 if TYPE_CHECKING:  # Avoid circular import at runtime
@@ -803,16 +804,43 @@ class ViewPanel(QWidget):
 
     def create_object_pics(self):
         for _object in self.View.Objects.values():
-            # object_rect = QRect(_object.Left, _object.Top, _object.Width, _object.Height)
+            # Get polygon points from the object
+            points = json_to_points(_object.Points) if hasattr(_object, "Points") else []
+
+            if not points:
+                # No valid polygon - skip this object
+                continue
+
+            # Get the bounding rect from the polygon points
+            left, top, width, height = points_to_bounding_rect(points)
+
+            # Create adjusted rect for display (scaled to window)
             adjusted_object_rect = QRect(
-                self.geom_x_adjust(_object.Left),
-                self.geom_y_adjust(_object.Top),
-                self.geom_x_scale(_object.Width),
-                self.geom_y_scale(_object.Height),
+                self.geom_x_adjust(left),
+                self.geom_y_adjust(top),
+                self.geom_x_scale(width),
+                self.geom_y_scale(height),
             )
+
+            # Scale the polygon points to match the display
+            scaled_points = scale_points(
+                points,
+                scale_x=self.background_scale[0],
+                scale_y=self.background_scale[1],
+                offset_x=self.view_top_left_adjustment[0],
+                offset_y=self.view_top_left_adjustment[1],
+            )
+
+            # Create pixmap from the bounding rect of the foreground image
             pixmap = QPixmap.fromImage(self.foreground_image.copy(adjusted_object_rect))
+
+            # Create the object widget with polygon info for hit detection
             self.object_pics[_object.Id] = ViewImageObject(
-                self, obj_id=_object.Id, pixmap=pixmap, scale=self.background_scale
+                self,
+                obj_id=_object.Id,
+                pixmap=pixmap,
+                scale=self.background_scale,
+                polygon_points=scaled_points,
             )
             self.object_pics[_object.Id].setGeometry(adjusted_object_rect)
 
