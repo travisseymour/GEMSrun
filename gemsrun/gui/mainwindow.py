@@ -70,10 +70,7 @@ class MainWin(QMainWindow):
 
         self.InitUI()
 
-        if (
-            self.options.DisplayType.lower() not in ("maximized", "fullscreen")
-            and self.db.Global.Options.Debug
-        ):
+        if self.options.DisplayType.lower() not in ("maximized", "fullscreen") and self.db.Global.Options.Debug:
             self.info_window = InfoDialog(self, db)
             self.info_window.move(10, 10)
             self.info_window.hide()
@@ -102,17 +99,13 @@ class MainWin(QMainWindow):
                 # no matter what, expect last 4 values of list to be integers for rgba
                 stage_color = list(reversed(eval(stage_color)))
                 a, b, g, r, *other = stage_color
-                self.setStyleSheet(
-                    "QMainWindow{" + f"background-color:rgba({r},{g},{b},{a});" + "}"
-                )
+                self.setStyleSheet("QMainWindow{" + f"background-color:rgba({r},{g},{b},{a});" + "}")
         except Exception as e:
             log.warning(f"Unable to set stage color: ({e})")
 
     def load_next_view(self):
         log.debug(f"Loading Next View #{self.current_view_id}")
-        self.view_window: ViewPanel = ViewPanel(
-            parent=self, view_id=self.current_view_id
-        )
+        self.view_window: ViewPanel = ViewPanel(parent=self, view_id=self.current_view_id)
         # self.setCentralWidget(self.view_window)
 
     def shutdown_view(self):
@@ -145,9 +138,7 @@ class MainWin(QMainWindow):
         raw = getattr(self.options, "Roomtransition", "None") or "None"
         result = _TRANSITION_MAP.get(raw.strip().lower())
         if result is None and raw.strip().lower() != "none":
-            log.warning(
-                f'Unrecognized Roomtransition value "{raw}", defaulting to no transition.'
-            )
+            log.warning(f'Unrecognized Roomtransition value "{raw}", defaulting to no transition.')
         return result
 
     def prepare_transition(self, before_pixmap: QPixmap):
@@ -187,11 +178,7 @@ class MainWin(QMainWindow):
         before_pixmap = self._before_pixmap
         self._before_pixmap = None
 
-        if (
-            before_pixmap is None
-            or not self.view_window
-            or not self._transition_overlay
-        ):
+        if before_pixmap is None or not self.view_window or not self._transition_overlay:
             return
 
         transition_name = self._resolve_transition()
@@ -204,18 +191,14 @@ class MainWin(QMainWindow):
 
         after_pixmap = self.view_window.grab()
 
-        duration_ms = max(
-            100, min(2000, int(getattr(self.options, "TransitionDuration", 400)))
-        )
+        duration_ms = max(100, min(2000, int(getattr(self.options, "TransitionDuration", 400))))
 
         overlay = self._transition_overlay
         overlay.raise_()
 
         log.debug(f"Playing room transition: {transition_name} ({duration_ms}ms)")
 
-        clip = make_transition(
-            before_pixmap, after_pixmap, transition_name, duration_ms
-        )
+        clip = make_transition(before_pixmap, after_pixmap, transition_name, duration_ms)
 
         clip.frameChanged.connect(overlay.setPixmap)
 
@@ -256,17 +239,11 @@ class MainWin(QMainWindow):
         """
         q_modifiers = QApplication.keyboardModifiers()
         modifiers = []
-        if (
-            q_modifiers & Qt.KeyboardModifier.ShiftModifier
-        ) == Qt.KeyboardModifier.ShiftModifier:
+        if (q_modifiers & Qt.KeyboardModifier.ShiftModifier) == Qt.KeyboardModifier.ShiftModifier:
             modifiers.append("shift")
-        if (
-            q_modifiers & Qt.KeyboardModifier.ControlModifier
-        ) == Qt.KeyboardModifier.ControlModifier:
+        if (q_modifiers & Qt.KeyboardModifier.ControlModifier) == Qt.KeyboardModifier.ControlModifier:
             modifiers.append("control")
-        if (
-            q_modifiers & Qt.KeyboardModifier.AltModifier
-        ) == Qt.KeyboardModifier.AltModifier:
+        if (q_modifiers & Qt.KeyboardModifier.AltModifier) == Qt.KeyboardModifier.AltModifier:
             modifiers.append("alt")
         return tuple(modifiers)
 

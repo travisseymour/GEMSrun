@@ -95,15 +95,9 @@ def run(
     user_arg: str | None = typer.Argument(
         None, metavar="USERID", help="User ID string, used to create data file name."
     ),
-    fname: str | None = typer.Option(
-        None, "--file", "-f", help="Specify your gems environment filename."
-    ),
-    user: str | None = typer.Option(
-        None, "--user", "-u", help="Specify user ID string."
-    ),
-    skipdata: bool | None = typer.Option(
-        None, "--skipdata/--no-skipdata", "-s", help="Suppress the output data file."
-    ),
+    fname: str | None = typer.Option(None, "--file", "-f", help="Specify your gems environment filename."),
+    user: str | None = typer.Option(None, "--user", "-u", help="Specify user ID string."),
+    skipdata: bool | None = typer.Option(None, "--skipdata/--no-skipdata", "-s", help="Suppress the output data file."),
     overwrite: bool | None = typer.Option(
         None,
         "--overwrite/--no-overwrite",
@@ -137,9 +131,7 @@ def run(
 
     # Round fractional DPR (e.g. 1.198) to nearest integer to avoid rendering
     # artifacts in view transitions on screens with non-integer text scaling.
-    QApplication.setHighDpiScaleFactorRoundingPolicy(
-        Qt.HighDpiScaleFactorRoundingPolicy.Round
-    )
+    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.Round)
     gemsrun.APPLICATION = QApplication([])
     gemsrun.default_font = QFont("Arial", 12)
 
@@ -166,40 +158,20 @@ def run(
 
     args = Munch(
         {
-            "fname": (
-                cli_fname
-                if cli_fname
-                else settings.value("fname", defaultValue="", type=str)
-            ),
-            "user": (
-                cli_user
-                if cli_user is not None
-                else settings.value("user", defaultValue="User1", type=str)
-            ),
+            "fname": (cli_fname if cli_fname else settings.value("fname", defaultValue="", type=str)),
+            "user": (cli_user if cli_user is not None else settings.value("user", defaultValue="User1", type=str)),
             "skipdata": (
-                skipdata
-                if skipdata is not None
-                else settings.value("skipdata", defaultValue=False, type=bool)
+                skipdata if skipdata is not None else settings.value("skipdata", defaultValue=False, type=bool)
             ),
             "fullscreen": (
-                fullscreen
-                if fullscreen is not None
-                else settings.value("fullscreen", defaultValue=False, type=bool)
+                fullscreen if fullscreen is not None else settings.value("fullscreen", defaultValue=False, type=bool)
             ),
             "overwrite": (
-                overwrite
-                if overwrite is not None
-                else settings.value("overwrite", defaultValue=False, type=bool)
+                overwrite if overwrite is not None else settings.value("overwrite", defaultValue=False, type=bool)
             ),
-            "debug": (
-                debug
-                if debug is not None
-                else settings.value("debug", defaultValue=False, type=bool)
-            ),
+            "debug": (debug if debug is not None else settings.value("debug", defaultValue=False, type=bool)),
             "skipmedia": (
-                skipmedia
-                if skipmedia is not None
-                else settings.value("skipmedia", defaultValue=False, type=bool)
+                skipmedia if skipmedia is not None else settings.value("skipmedia", defaultValue=False, type=bool)
             ),
         }
     )

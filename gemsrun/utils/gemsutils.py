@@ -55,9 +55,7 @@ def check_media(db_filename, database, media_folder) -> tuple:
 
     # define a helper function
     def file_ok(file_name: str):
-        return (not file_name) or os.path.isfile(
-            os.path.join(media_folder, os.path.basename(file_name))
-        )
+        return (not file_name) or os.path.isfile(os.path.join(media_folder, os.path.basename(file_name)))
 
     # loop through and update outcomelist with any missing files
     for record in all_records:
@@ -110,17 +108,13 @@ def check_connectivity(timeout: float = 3.0) -> bool:
                 s.settimeout(timeout)
                 s.connect((host, port))
                 elapsed = time.perf_counter() - start
-                log.debug(
-                    f"connectivity confirmed via {host}:{port} in {elapsed:.4f} sec."
-                )
+                log.debug(f"connectivity confirmed via {host}:{port} in {elapsed:.4f} sec.")
                 return True
         except OSError:
             continue
 
     elapsed = time.perf_counter() - start
-    log.warning(
-        f"connectivity check failed after {elapsed:.4f} sec (tried {len(hosts)} hosts)"
-    )
+    log.warning(f"connectivity check failed after {elapsed:.4f} sec (tried {len(hosts)} hosts)")
     return False
 
 

@@ -110,9 +110,7 @@ class ViewImageObject(QLabel):
     ):
         super().__init__(parent=parent)
         self.db: Munch = self.parent().db
-        self.object: Munch = self.db.Views[str(self.parent().view_id)].Objects[
-            str(obj_id)
-        ]
+        self.object: Munch = self.db.Views[str(self.parent().view_id)].Objects[str(obj_id)]
         # Enable debug visualization based on Debug option
         debug_mode = getattr(self.db.Global.Options, "Debug", False)
         self.show_name: bool = bool(debug_mode)
@@ -123,8 +121,7 @@ class ViewImageObject(QLabel):
 
         # Check if this is an invisible object with click actions (hotspot)
         has_click_action = any(
-            action.Enabled and action.Trigger == "MouseClick()"
-            for action in self.object.Actions.values()
+            action.Enabled and action.Trigger == "MouseClick()" for action in self.object.Actions.values()
         )
 
         if self.object.Visible:
@@ -193,10 +190,7 @@ class ViewImageObject(QLabel):
         geom = self.geometry()
 
         # Convert global polygon points to local widget coordinates
-        local_points = [
-            QPoint(p[0] - geom.x(), p[1] - geom.y())
-            for p in self.polygon_points
-        ]
+        local_points = [QPoint(p[0] - geom.x(), p[1] - geom.y()) for p in self.polygon_points]
 
         # Create polygon and region for masking
         polygon = QPolygon(local_points)
@@ -224,10 +218,7 @@ class ViewImageObject(QLabel):
             # Draw the actual polygon outline instead of a rectangle
             if self.polygon_points:
                 geom = self.geometry()
-                local_points = [
-                    QPoint(p[0] - geom.x(), p[1] - geom.y())
-                    for p in self.polygon_points
-                ]
+                local_points = [QPoint(p[0] - geom.x(), p[1] - geom.y()) for p in self.polygon_points]
                 polygon = QPolygon(local_points)
                 painter.setPen(QColor("yellow"))
                 painter.drawPolygon(polygon)
@@ -255,10 +246,7 @@ class ViewImageObject(QLabel):
 
         # Convert global polygon points to local widget coordinates
         geom = self.geometry()
-        local_points = [
-            [p[0] - geom.x(), p[1] - geom.y()]
-            for p in self.polygon_points
-        ]
+        local_points = [[p[0] - geom.x(), p[1] - geom.y()] for p in self.polygon_points]
 
         # Create painter path for clipping
         path = QPainterPath()
@@ -282,9 +270,7 @@ class ViewImageObject(QLabel):
             return
 
         mime_data = QMimeData()
-        mime_data.setText(
-            f"{self.object.Name}|{self.parent().view_id}|{self.object.Id}"
-        )
+        mime_data.setText(f"{self.object.Name}|{self.parent().view_id}|{self.object.Id}")
 
         drag = QDrag(self)
         drag.setMimeData(mime_data)
@@ -336,9 +322,7 @@ class ViewImageObject(QLabel):
 
     def dropEvent(self, ev: QDropEvent) -> None:
         source_object_info = ev.mimeData().text()
-        source_object_name, source_view_id, source_object_id = source_object_info.split(
-            "|"
-        )
+        source_object_name, source_view_id, source_object_id = source_object_info.split("|")
         if int(source_object_id) == self.object.Id:
             # erroneously picking up us dropping onto ourselves!
             ev.ignore()
@@ -357,6 +341,7 @@ class ViewImageObject(QLabel):
 
             self.parent().dragging_object.show()
             self.parent().dragging_object = None
+            self.parent().drag_object_bitmap = None  # Clear the stored bitmap
 
             self.parent().handle_object_drop(
                 source_id=source_object_id,
@@ -435,8 +420,7 @@ class ViewImageObject(QLabel):
         if not self.cursors_enabled:
             return
         is_clickable = any(
-            action.Enabled and action.Trigger == "MouseClick()"
-            for action in self.object.Actions.values()
+            action.Enabled and action.Trigger == "MouseClick()" for action in self.object.Actions.values()
         )
         if is_clickable and self.pointing_cursor:
             self.setCursor(self.pointing_cursor)
@@ -468,9 +452,7 @@ class ViewPocketObject(QLabel):
     def __init__(self, parent: ViewPanel, pocket_id: int):
         super().__init__(parent=parent)
         self.db: Munch = self.parent().db
-        self.object_info: Munch = Munch(
-            {"name": "", "view_id": -1, "Id": -1, "image": None}
-        )
+        self.object_info: Munch = Munch({"name": "", "view_id": -1, "Id": -1, "image": None})
         self.pocket_id: int = pocket_id
         self.pocket_image: QPixmap = QPixmap()
         self.pocket_adjust_timer: QTimer = QTimer(self)
@@ -482,18 +464,21 @@ class ViewPocketObject(QLabel):
         self._apply_cursor()
 
     def init_pocket_image(self):
-        # Get the empty pocket background
+        # Get the empty pocket background - make a copy to avoid modifying cached version
         pocket_bg = self.parent().pocket_bitmap
+        if pocket_bg is None:
+            return
 
         if not self.object_info.image or self.object_info.name == "":
             # Empty pocket - just show the pocket background
-            self.pocket_image = QPixmap().fromImage(pocket_bg)
-            self.object_info.image = pocket_bg
+            self.pocket_image = QPixmap.fromImage(pocket_bg.copy())
+            self.object_info.image = pocket_bg.copy()  # Store a copy, not reference to cached image
         else:
             # Pocket has an object - composite object image on top of pocket background
             # This ensures transparent areas of polygon objects show the pocket background
-            self.pocket_image = QPixmap().fromImage(pocket_bg)
-            object_pixmap = QPixmap().fromImage(self.object_info.image)
+            # Use copy() to ensure we have our own pixmap to draw on
+            self.pocket_image = QPixmap.fromImage(pocket_bg.copy())
+            object_pixmap = QPixmap.fromImage(self.object_info.image)
 
             # Center the object image on the pocket background
             painter = QPainter(self.pocket_image)
@@ -528,10 +513,7 @@ class ViewPocketObject(QLabel):
         result.fill(QColor(0, 0, 0, 0))
 
         # Convert global polygon points to local widget coordinates
-        local_points = [
-            [p[0] - geometry.x(), p[1] - geometry.y()]
-            for p in polygon_points
-        ]
+        local_points = [[p[0] - geometry.x(), p[1] - geometry.y()] for p in polygon_points]
 
         # Create painter path for clipping
         path = QPainterPath()
@@ -576,9 +558,7 @@ class ViewPocketObject(QLabel):
 
         # create mime data to send to ViewImageObject that this pocket object is dropped on
         mime_data = QMimeData()
-        mime_data.setText(
-            f"{self.object_info.name}|{self.object_info.view_id}|{self.object_info.Id}"
-        )
+        mime_data.setText(f"{self.object_info.name}|{self.object_info.view_id}|{self.object_info.Id}")
         drag = QDrag(self)
         drag.setMimeData(mime_data)
 
@@ -623,16 +603,14 @@ class ViewPocketObject(QLabel):
         if self.isHidden():
             ev.ignore()
         else:
-            if self.parent().dragging_object is None:
-                self.parent().dragging_object = self
-                self.hide()
+            # Note: Unlike ViewImageObject, the pocket should NOT set itself as
+            # the dragging_object. The pocket is a drop target, not a drag source.
+            # The actual source object's dragEnterEvent sets dragging_object.
             ev.accept()
 
     def dropEvent(self, ev: QDropEvent) -> None:
         source_object_info = ev.mimeData().text()
-        source_object_name, source_view_id, source_object_id = source_object_info.split(
-            "|"
-        )
+        source_object_name, source_view_id, source_object_id = source_object_info.split("|")
 
         if self.object_info.Id >= 0:
             if int(source_object_id) == self.object_info.Id:
@@ -640,9 +618,7 @@ class ViewPocketObject(QLabel):
                 ev.ignore()
             else:
                 # dragged view object onto non-empty pocket, just stop drag
-                log.debug(
-                    f'"{source_object_name}" was dropped on non-empty Pocket #"{self.pocket_id}"'
-                )
+                log.debug(f'"{source_object_name}" was dropped on non-empty Pocket #"{self.pocket_id}"')
 
                 log.info(
                     dict(
@@ -658,6 +634,7 @@ class ViewPocketObject(QLabel):
 
                 self.parent().dragging_object.show()
                 self.parent().dragging_object = None
+                self.parent().drag_object_bitmap = None  # Clear the stored bitmap
 
                 # self.parent().handle_object_drop(source_id=source_object_id, source_view_id=source_view_id,
                 #                                  target_id=self.object.Id)
@@ -665,8 +642,7 @@ class ViewPocketObject(QLabel):
                 ev.accept()
 
         elif int(source_object_id) in [
-            value.object_info.Id
-            for value in self.parent().parent().pocket_objects.values()
+            value.object_info.Id for value in self.parent().parent().pocket_objects.values()
         ]:
             log.info(
                 dict(
@@ -675,10 +651,7 @@ class ViewPocketObject(QLabel):
                     View=self.parent().View.Name,
                     **gu.func_params(),
                     Source=source_object_id,
-                    Target=self.parent()
-                    .parent()
-                    .pocket_objects[self.pocket_id]
-                    .object_info.name,
+                    Target=self.parent().parent().pocket_objects[self.pocket_id].object_info.name,
                     Result="Invalid|ObjAlreadyInPocket",
                     TimeTime=self.parent().parent().task_elapsed(),
                     ViewTime=self.parent().view_elapsed(),
@@ -689,13 +662,12 @@ class ViewPocketObject(QLabel):
             if self.parent().dragging_object:
                 self.parent().dragging_object.show()
             self.parent().dragging_object = None
+            self.parent().drag_object_bitmap = None  # Clear the stored bitmap
 
             ev.accept()
         else:
             # dragged view object onto empty pocket!
-            log.debug(
-                f'"{source_object_name}" was dropped on empty Pocket #"{self.pocket_id}"'
-            )
+            log.debug(f'"{source_object_name}" was dropped on empty Pocket #"{self.pocket_id}"')
 
             current_view = self.parent().db.Views.get(str(self.parent().view_id))
             source_object = None
@@ -733,20 +705,41 @@ class ViewPocketObject(QLabel):
                 )
             )
 
-            # Get polygon points from dragging object for clipping
-            dragging_obj = self.parent().dragging_object
-            polygon_points = getattr(dragging_obj, "polygon_points", [])
+            # Get the object image by looking up the source object directly.
+            # We use the source_object_id from mime data to find the actual ViewImageObject
+            # and get its pixmap. This is more reliable than relying on drag_object_bitmap
+            # which may have parent/view issues.
+            base_pixmap = None
+            source_obj_id = int(source_object_id)
 
-            # Create the object image, polygon-clipped if we have points
-            base_pixmap = dragging_obj.pixmap().copy()
-            if polygon_points:
-                # Create polygon-clipped version for proper transparency
-                clipped_pixmap = self._create_polygon_clipped_pixmap(
-                    base_pixmap, polygon_points, dragging_obj.geometry()
-                )
-                object_image = pixmap_to_pointer(clipped_pixmap, 100, 90, keep_aspect_ratio=False).toImage()
-            else:
+            # Try to get the pixmap from the source object in object_pics
+            if source_obj_id in self.parent().object_pics:
+                source_obj = self.parent().object_pics[source_obj_id]
+                base_pixmap = source_obj.pixmap()
+                if base_pixmap and not base_pixmap.isNull():
+                    # Apply polygon clipping if the source has polygon points
+                    polygon_points = getattr(source_obj, "polygon_points", [])
+                    if polygon_points:
+                        base_pixmap = source_obj._create_polygon_clipped_pixmap(base_pixmap)
+                    base_pixmap = base_pixmap.copy()  # Ensure we have our own copy
+
+            # Fallback to drag_object_bitmap if source object not found
+            if base_pixmap is None or base_pixmap.isNull():
+                base_pixmap = self.parent().drag_object_bitmap
+                if base_pixmap is not None:
+                    base_pixmap = base_pixmap.copy()  # Ensure we have our own copy
+
+            # Final fallback to dragging_object
+            if base_pixmap is None or base_pixmap.isNull():
+                dragging_obj = self.parent().dragging_object
+                if dragging_obj is not None:
+                    base_pixmap = dragging_obj.pixmap().copy()
+
+            if base_pixmap is not None and not base_pixmap.isNull():
                 object_image = pixmap_to_pointer(base_pixmap, 100, 90, keep_aspect_ratio=False).toImage()
+            else:
+                # Last resort: create empty image
+                object_image = QImage()
 
             self.object_info = Munch(
                 {
@@ -759,13 +752,12 @@ class ViewPocketObject(QLabel):
             self.init_pocket_image()
 
             self.parent().dragging_object = None
+            self.parent().drag_object_bitmap = None  # Clear the stored bitmap
 
             # self.parent().handle_object_drop(source_id=source_object_id, source_view_id=source_view_id,
             #                                  target_id=self.object.Id)
 
-            self.parent().handle_pocket_drop(
-                dropped_object_id=source_object_id, pocket_id=self.pocket_id
-            )
+            self.parent().handle_pocket_drop(dropped_object_id=source_object_id, pocket_id=self.pocket_id)
 
             ev.accept()
 
@@ -878,9 +870,7 @@ class NavImageObject(QLabel):
             )
         )
 
-        style_sheet = (
-            "QLabel{background-color: rgba(0,0,0,0%)} "  # transparent background
-        )
+        style_sheet = "QLabel{background-color: rgba(0,0,0,0%)} "  # transparent background
 
         img_file = Path(nav_image_folder, file_codex[nav_type]).resolve()
         # log.warning(f"{img_file=}; {Path(img_file).is_file()=}")
@@ -889,9 +879,7 @@ class NavImageObject(QLabel):
             self.setFixedSize(image.width(), image.height())
             # Use forward slashes for Qt stylesheet URLs to avoid backslash escape issues on Windows
             img_file_url = img_file.as_posix()
-            style_sheet += (
-                "QLabel::hover {background-image: url(" + img_file_url + ");}"
-            )
+            style_sheet += "QLabel::hover {background-image: url(" + img_file_url + ");}"
         except IndexError:
             self.parent().fail_dialog(
                 "Unexpected Nav Type",
@@ -1128,9 +1116,7 @@ class VideoObject(QVideoWidget):
         if self.player and not self.fallback_mode:
             self.play()
         else:
-            log.warning(
-                f"Video {video_path.name} could not be played due to multimedia backend issues"
-            )
+            log.warning(f"Video {video_path.name} could not be played due to multimedia backend issues")
 
     def play(self):
         if self.player and not self.fallback_mode:
@@ -1184,10 +1170,7 @@ class VideoObject(QVideoWidget):
         geom = self.geometry()
 
         # Convert global polygon points to local widget coordinates
-        local_points = [
-            QPoint(p[0] - geom.x(), p[1] - geom.y())
-            for p in self.polygon_points
-        ]
+        local_points = [QPoint(p[0] - geom.x(), p[1] - geom.y()) for p in self.polygon_points]
 
         # Create polygon and set as mask
         polygon = QPolygon(local_points)
@@ -1198,9 +1181,7 @@ class VideoObject(QVideoWidget):
         super().mousePressEvent(ev)
 
         if ev.buttons() == Qt.MouseButton.RightButton:
-            log.debug(
-                f'Movie "{self.video_path.name}" closed manually via right-click.'
-            )
+            log.debug(f'Movie "{self.video_path.name}" closed manually via right-click.')
 
             log.info(
                 dict(
@@ -1300,10 +1281,7 @@ class AnimationObject(QLabel):
         geom = self.geometry()
 
         # Convert global polygon points to local widget coordinates
-        local_points = [
-            QPoint(p[0] - geom.x(), p[1] - geom.y())
-            for p in self.polygon_points
-        ]
+        local_points = [QPoint(p[0] - geom.x(), p[1] - geom.y()) for p in self.polygon_points]
 
         # Create polygon and set as mask
         polygon = QPolygon(local_points)
@@ -1314,9 +1292,7 @@ class AnimationObject(QLabel):
         super().mousePressEvent(ev)
 
         if ev.buttons() == Qt.MouseButton.RightButton:
-            log.debug(
-                f'Movie "{self.video_path.name}" closed manually via right-click.'
-            )
+            log.debug(f'Movie "{self.video_path.name}" closed manually via right-click.')
 
             log.info(
                 dict(

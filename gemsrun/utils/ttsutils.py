@@ -63,9 +63,7 @@ def render_tts_from_google(db: Munch) -> bool:
         temp_folder.mkdir(parents=True, exist_ok=True)
 
         # Get all actions from global, pocket, views, and objects
-        actions = list(
-            chain(db.Global.GlobalActions.values(), db.Global.PocketActions.values())
-        )
+        actions = list(chain(db.Global.GlobalActions.values(), db.Global.PocketActions.values()))
         for view in db.Views.values():
             actions.extend(list(view.Actions.values()))
             for _object in view.Objects.values():
@@ -76,12 +74,7 @@ def render_tts_from_google(db: Munch) -> bool:
         phrases_to_download: list[tuple[str, str]] = []
         for action in actions:
             # Skip actions with variable specifiers (can't pre-render)
-            if (
-                action.Enabled
-                and "SayText" in action.Action
-                and "[" not in action.Action
-                and "$" not in action.Action
-            ):
+            if action.Enabled and "SayText" in action.Action and "[" not in action.Action and "$" not in action.Action:
                 if match := say_pattern.search(string=action.Action):
                     speech = match.group().strip().replace('"', "")
                     speech_hash = gu.string_hash(speech)
@@ -122,15 +115,11 @@ def render_tts_from_google(db: Munch) -> bool:
         for mp3_path, speech_hash in downloaded:
             cached_wav = audiocache.cache_tts_from_mp3(mp3_path, speech_hash)
             if cached_wav:
-                log.debug(
-                    f"Pre-rendered TTS: speech_{speech_hash} -> {cached_wav.name}"
-                )
+                log.debug(f"Pre-rendered TTS: speech_{speech_hash} -> {cached_wav.name}")
             # Clean up temp mp3
             mp3_path.unlink(missing_ok=True)
 
-        print(
-            f"TTS pre-rendering complete ({len(downloaded)}/{len(phrases_to_download)})."
-        )
+        print(f"TTS pre-rendering complete ({len(downloaded)}/{len(phrases_to_download)}).")
         return True
     except Exception as e:
         log.debug(f"Got exception trying to pre-render tts: {e}")
