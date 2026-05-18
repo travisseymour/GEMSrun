@@ -330,9 +330,17 @@ class ViewImageObject(QLabel):
         if self.isHidden():
             ev.ignore()
         else:
+            # Only hide ourselves if WE are the object being dragged.
+            # When dragging from a pocket, dragging_object is never set by the
+            # source, so without this check every target object would hide itself.
             if self.parent().dragging_object is None:
-                self.parent().dragging_object = self
-                self.hide()
+                try:
+                    _, _, source_object_id = ev.mimeData().text().split("|")
+                    if int(source_object_id) == self.object.Id:
+                        self.parent().dragging_object = self
+                        self.hide()
+                except (ValueError, AttributeError):
+                    pass
 
             ev.accept()
 
@@ -355,7 +363,8 @@ class ViewImageObject(QLabel):
                 )
             )
 
-            self.parent().dragging_object.show()
+            if self.parent().dragging_object:
+                self.parent().dragging_object.show()
             self.parent().dragging_object = None
             self.parent().drag_object_bitmap = None  # Clear the stored bitmap
 
@@ -648,7 +657,8 @@ class ViewPocketObject(QLabel):
                     )
                 )
 
-                self.parent().dragging_object.show()
+                if self.parent().dragging_object:
+                    self.parent().dragging_object.show()
                 self.parent().dragging_object = None
                 self.parent().drag_object_bitmap = None  # Clear the stored bitmap
 
