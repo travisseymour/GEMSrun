@@ -124,6 +124,9 @@ class ViewImageObject(QLabel):
             action.Enabled and action.Trigger == "MouseClick()" for action in self.object.Actions.values()
         )
 
+        # Always store the original pixmap for later restoration (e.g., pocket right-click)
+        self._original_pixmap = pixmap
+
         if self.object.Visible:
             # Visible object - show normally
             self.setVisible(True)
@@ -180,6 +183,19 @@ class ViewImageObject(QLabel):
         if self._mask_needs_update:
             self._set_polygon_mask()
             self._mask_needs_update = False
+
+    def restore_visible(self):
+        """Restore this object to its normal visible state.
+
+        Used when an object is returned from a pocket. The widget may have been
+        created with a transparent pixmap (invisible hotspot path) or hidden
+        entirely, so we must restore the original pixmap and clear any
+        transparency attributes before showing.
+        """
+        self.setPixmap(self._original_pixmap)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
+        self.setVisible(True)
+        self.update()
 
     def _set_polygon_mask(self):
         """Set a mask on the widget so only polygon area receives mouse events."""

@@ -801,6 +801,11 @@ class ViewPanel(QWidget):
             )
             self.object_pics[_object.Id].setGeometry(adjusted_object_rect)
 
+            # Hide objects that are marked as not visible in the database
+            # (e.g., objects that are currently in pockets)
+            if not _object.Visible:
+                self.object_pics[_object.Id].hide()
+
     def make_action_timer(self, condition: str, action: str, when_secs: float):
         log.debug(f'SETTING A TIMER TO "{action}" in {when_secs * 1000} ms if condition "{condition}" is met.')
         QTimer.singleShot(
@@ -1157,7 +1162,7 @@ class ViewPanel(QWidget):
 
         # restore object to its rightful location
         if view_id == self.View.Id:
-            self.object_pics[object_id].show()
+            self.object_pics[object_id].restore_visible()
 
         # clear out pocket
         self.parent().pocket_objects[pocket_id].object_info = Munch(
@@ -1868,7 +1873,7 @@ class ViewPanel(QWidget):
             log.debug(e)
         else:
             if str(object_id) in self.View.Objects.keys():
-                self.object_pics[object_id].show()
+                self.object_pics[object_id].restore_visible()
                 if not skiplog:
                     log.info(dict(Kind='Action', Type='ShowObject', View=self.View.Name,
                                   **gu.func_params(), Target=None, Result='Valid',
