@@ -33,9 +33,10 @@ import webbrowser
 
 from gtts import gTTS
 from munch import Munch
-from PySide6.QtCore import QEventLoop, QPoint, QRect, Qt, QTimer
+from PySide6.QtCore import QEventLoop, QPoint, QPointF, QRect, Qt, QTimer
 from PySide6.QtGui import (
     QCloseEvent,
+    QColor,
     QCursor,
     QDragEnterEvent,
     QDragLeaveEvent,
@@ -44,6 +45,8 @@ from PySide6.QtGui import (
     QImage,
     QPainter,
     QPixmap,
+    QPolygon,
+    QRegion,
 )
 from PySide6.QtWidgets import QInputDialog, QLabel, QMessageBox, QWidget
 
@@ -2114,18 +2117,18 @@ class ViewPanel(QWidget):
     def ShowImageWithin(
         self,
         image_file: str = "",
-        left: int = 0,
-        top: int = 0,
         duration: float = 0.0,
         click_through: bool = False,
         within: int = -1,
         hide_target: bool = False,
+        # Deprecated parameters kept for backwards compatibility (ignored)
+        left: int = 0,
+        top: int = 0,
         stretch: bool = False,
     ):
         """
-        Like ShowImage, but if Within refers to a valid object, the image is scaled and positioned to that object's
-        bounds. Otherwise it falls back to Left/Top positioning. Optionally hides the target while overlaid.
-        stretch determines whether to ignore aspect ratio when fitting the target bounds.
+        Shows an image warped to fit the target object's polygon bounds.
+        The image is perspective-transformed to match the shape of the target object.
         :scope viewobjectpocket
         :mtype action
         """
@@ -2136,7 +2139,7 @@ class ViewPanel(QWidget):
                 Type="ShowImageWithin",
                 View=self.View.Name,
                 **gu.func_params(),
-                Target=None,
+                Target=within,
                 Result="Valid",
                 TimeTime=self.get_task_elapsed(),
                 ViewTime=self.view_elapsed(),
@@ -2145,7 +2148,11 @@ class ViewPanel(QWidget):
 
         pic_path = Path(self.options.MediaPath, image_file)
         pic_name = Path(pic_path).stem
-        target = self.object_pics.get(int(within)) if within is not None else None
+        target = self.object_pics.get(int(within)) if within is not None and within >= 0 else None
+
+        if not target:
+            log.warning(f"ShowImageWithin: target object {within} not found in current view")
+            return
 
         try:
             pixmap = QPixmap(str(pic_path.resolve()))
@@ -2168,48 +2175,158 @@ class ViewPanel(QWidget):
             )
             self.external_pics[pic_name] = image
 
-        if target:
-            target_rect = target.geometry()
-            target_was_visible = target.isVisible()
+        target_rect = target.geometry()
+        target_was_visible = target.isVisible()
+        polygon_points = getattr(target, "polygon_points", [])
+
+        if len(polygon_points) >= 4:
+            # Warp image to fit the polygon using perspective transformation
+            warped_pixmap = self._warp_image_to_polygon(pixmap, polygon_points, target_rect)
+            image.setPixmap(warped_pixmap)
+            image.setFixedSize(warped_pixmap.width(), warped_pixmap.height())
+            image.move(target_rect.topLeft())
+
+            # Apply polygon mask
+            local_points = [
+                QPoint(p[0] - target_rect.x(), p[1] - target_rect.y())
+                for p in polygon_points
+            ]
+            polygon = QPolygon(local_points)
+            region = QRegion(polygon)
+            image.setMask(region)
+        else:
+            # Fall back to simple scaling if no valid polygon (rectangular bounds)
             scaled = pixmap.scaled(
                 target_rect.width(),
                 target_rect.height(),
-                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.AspectRatioMode.IgnoreAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
             image.setPixmap(scaled)
             image.setFixedSize(scaled.width(), scaled.height())
+            image.move(target_rect.topLeft())
 
-            if stretch:
-                # center within target bounds while keeping aspect ratio
-                offset_x = target_rect.left() + (target_rect.width() - scaled.width()) // 2
-                offset_y = target_rect.top() + (target_rect.height() - scaled.height()) // 2
-                image.move(offset_x, offset_y)
-            else:
-                image.move(target_rect.topLeft())
-            if hide_target:
-                target.hide()
-                if duration and target_was_visible:
-                    QTimer.singleShot(
-                        int(duration * 1000),
-                        self,
-                        target.show,
-                    )
-        else:
-            # Fall back to standard behavior using stage-aligned coordinates
-            ratio_x, ratio_y = self.background_scale
-            scaled = pixmap.scaled(
-                int(pixmap.width() * ratio_x),
-                int(pixmap.height() * ratio_y),
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-            image.setPixmap(scaled)
-            image.setFixedSize(scaled.width(), scaled.height())
-            image.move(self.geom_x_adjust(left), self.geom_y_adjust(top))
+        if hide_target:
+            target.hide()
+            if duration and target_was_visible:
+                QTimer.singleShot(
+                    int(duration * 1000),
+                    self,
+                    target.show,
+                )
 
         image.show()
         self.reset_z_pos()
+
+    def _warp_image_to_polygon(self, source_pixmap: QPixmap, polygon_points: list, target_rect: QRect) -> QPixmap:
+        """
+        Warp a rectangular image to fit a quadrilateral polygon using perspective transformation.
+
+        For polygons with exactly 4 points, uses perspective transformation.
+        For other polygons, falls back to simple scaling to the bounding rectangle.
+        """
+        from PySide6.QtGui import QPolygonF, QTransform
+
+        # Create output pixmap at target size
+        result = QPixmap(target_rect.width(), target_rect.height())
+        result.fill(QColor(0, 0, 0, 0))  # Transparent background
+
+        # Convert polygon points to local coordinates relative to target_rect
+        local_points = [
+            (p[0] - target_rect.x(), p[1] - target_rect.y())
+            for p in polygon_points
+        ]
+
+        if len(local_points) == 4:
+            # Use perspective transformation for quadrilaterals
+            # Define source corners (image rectangle)
+            src_w, src_h = source_pixmap.width(), source_pixmap.height()
+            source_quad = QPolygonF([
+                QPointF(0, 0),
+                QPointF(src_w, 0),
+                QPointF(src_w, src_h),
+                QPointF(0, src_h),
+            ])
+
+            # Define target corners (polygon in local coordinates)
+            # Order the points to match: top-left, top-right, bottom-right, bottom-left
+            ordered_points = self._order_polygon_points(local_points)
+            target_quad = QPolygonF([
+                QPointF(ordered_points[0][0], ordered_points[0][1]),
+                QPointF(ordered_points[1][0], ordered_points[1][1]),
+                QPointF(ordered_points[2][0], ordered_points[2][1]),
+                QPointF(ordered_points[3][0], ordered_points[3][1]),
+            ])
+
+            # Compute perspective transform
+            transform = QTransform()
+            if QTransform.quadToQuad(source_quad, target_quad, transform):
+                # Apply the transform
+                painter = QPainter(result)
+                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+                painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+                painter.setTransform(transform)
+                painter.drawPixmap(0, 0, source_pixmap)
+                painter.end()
+            else:
+                # Transform failed, fall back to simple scaling
+                log.warning("Perspective transform failed, falling back to simple scaling")
+                scaled = source_pixmap.scaled(
+                    target_rect.width(),
+                    target_rect.height(),
+                    Qt.AspectRatioMode.IgnoreAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                painter = QPainter(result)
+                painter.drawPixmap(0, 0, scaled)
+                painter.end()
+        else:
+            # For non-quadrilateral polygons, scale to bounding box
+            scaled = source_pixmap.scaled(
+                target_rect.width(),
+                target_rect.height(),
+                Qt.AspectRatioMode.IgnoreAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            painter = QPainter(result)
+            painter.drawPixmap(0, 0, scaled)
+            painter.end()
+
+        return result
+
+    def _order_polygon_points(self, points: list) -> list:
+        """
+        Order 4 polygon points into: top-left, top-right, bottom-right, bottom-left order.
+        This is needed for correct perspective transformation mapping.
+        """
+        if len(points) != 4:
+            return points
+
+        # Find centroid
+        cx = sum(p[0] for p in points) / 4
+        cy = sum(p[1] for p in points) / 4
+
+        # Categorize points by quadrant relative to centroid
+        top_left = min((p for p in points if p[0] <= cx and p[1] <= cy),
+                       key=lambda p: p[0] + p[1], default=None)
+        top_right = min((p for p in points if p[0] > cx and p[1] <= cy),
+                        key=lambda p: -p[0] + p[1], default=None)
+        bottom_right = min((p for p in points if p[0] > cx and p[1] > cy),
+                           key=lambda p: -p[0] - p[1], default=None)
+        bottom_left = min((p for p in points if p[0] <= cx and p[1] > cy),
+                          key=lambda p: p[0] - p[1], default=None)
+
+        # Handle edge cases where points don't fit neatly into quadrants
+        ordered = [top_left, top_right, bottom_right, bottom_left]
+        if None in ordered:
+            # Fall back to sorting by angle from centroid
+            import math
+            sorted_points = sorted(points, key=lambda p: math.atan2(p[1] - cy, p[0] - cx))
+            # Rotate to start from top-left-ish
+            min_idx = min(range(4), key=lambda i: sorted_points[i][0] + sorted_points[i][1])
+            ordered = sorted_points[min_idx:] + sorted_points[:min_idx]
+
+        return ordered
 
     def PortalTo(self, view_id: int, vid_file: str | None = ''):
         """
