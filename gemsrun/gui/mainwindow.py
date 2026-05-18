@@ -257,7 +257,7 @@ class MainWin(QMainWindow):
                     Kind="UserQuitCtrlShiftX",
                     Type="User",
                     View=self.view_window.View.Name if self.view_window else "NA",
-                    TimeTime=self.task_elapsed(),
+                    EnvTime=self.task_elapsed(),
                     ViewTime=self.view_window.view_elapsed(),
                 )
             )

@@ -747,7 +747,7 @@ class ViewPanel(QWidget):
                 View=self.View.Name,
                 Source=(self.dragging_object.object.Id if hasattr(self.dragging_object, "object") else "???"),
                 Result="Invalid|NoTarget",
-                TimeTime=self.parent().task_elapsed(),
+                EnvTime=self.parent().task_elapsed(),
                 ViewTime=self.view_elapsed(),
             )
         )
@@ -1138,7 +1138,7 @@ class ViewPanel(QWidget):
                     View=self.View.Name,
                     **gu.func_params(),
                     Result="Invalid|EmptyPocket",
-                    TimeTime=self.parent().task_elapsed(),
+                    EnvTime=self.parent().task_elapsed(),
                     ViewTime=self.view_elapsed(),
                 )
             )
@@ -1152,7 +1152,7 @@ class ViewPanel(QWidget):
                     View=self.View.Name,
                     **gu.func_params(),
                     Result="Valid",
-                    TimeTime=self.parent().task_elapsed(),
+                    EnvTime=self.parent().task_elapsed(),
                     ViewTime=self.view_elapsed(),
                 )
             )
@@ -1186,7 +1186,7 @@ class ViewPanel(QWidget):
                     Source=dropped_object_id,
                     Target=self.parent().pocket_objects[pocket_id].object_info.name,
                     Result="Invalid|FullPocket",
-                    TimeTime=self.parent().task_elapsed(),
+                    EnvTime=self.parent().task_elapsed(),
                     ViewTime=self.view_elapsed(),
                 )
             )
@@ -1203,7 +1203,7 @@ class ViewPanel(QWidget):
                     Source=dropped_object_id,
                     Target=self.parent().pocket_objects[pocket_id].object_info.name,
                     Result="Invalid|ObjNotTakeable",
-                    TimeTime=self.parent().task_elapsed(),
+                    EnvTime=self.parent().task_elapsed(),
                     ViewTime=self.view_elapsed(),
                 )
             )
@@ -1219,7 +1219,7 @@ class ViewPanel(QWidget):
                 Source=dropped_object_id,
                 Target=self.parent().pocket_objects[pocket_id].object_info.name,
                 Result="Valid",
-                TimeTime=self.parent().task_elapsed(),
+                EnvTime=self.parent().task_elapsed(),
                 ViewTime=self.view_elapsed(),
             )
         )
@@ -1275,7 +1275,7 @@ class ViewPanel(QWidget):
                     Source=source_object.Id,
                     Target=target_object.Id,
                     Result="Valid|Interaction",
-                    TimeTime=self.parent().task_elapsed(),
+                    EnvTime=self.parent().task_elapsed(),
                     ViewTime=self.view_elapsed(),
                 )
             )
@@ -1289,7 +1289,7 @@ class ViewPanel(QWidget):
                     Source=source_object.Id,
                     Target=target_object.Id,
                     Result="Invalid|Interaction",
-                    TimeTime=self.parent().task_elapsed(),
+                    EnvTime=self.parent().task_elapsed(),
                     ViewTime=self.view_elapsed(),
                 )
             )
@@ -1333,7 +1333,7 @@ class ViewPanel(QWidget):
             KeyText=key_text,
             KeyName=key_name,
             Result="Valid" if key_text in allowed else "Invalid",
-            TimeTime=self.parent().task_elapsed(),
+            EnvTime=self.parent().task_elapsed(),
             ViewTime=self.view_elapsed(),
         )
 
@@ -1692,7 +1692,7 @@ class ViewPanel(QWidget):
         """
         log.info(dict(Kind='Action', Type='ClearKeyBuffer', View=self.View.Name,
                       **gu.func_params(), Target=None, Result='Valid',
-                      TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
         self.key_buffer = ''
 
     def SetVariable(self, variable: str, value: str):
@@ -1704,14 +1704,14 @@ class ViewPanel(QWidget):
         """
         log.info(dict(Kind='Action', Type='SetVariable', View=self.View.Name,
                       **gu.func_params(), Target=None, Result='Valid',
-                      TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
         try:
             self.db.Variables[variable] = value
             log.debug(f'CURRENT VARS:{self.db.Variables}')
         except Exception as e:
             log.info(dict(Kind='Action', Type='SetVariable', View=self.View.Name,
                           **gu.func_params(), Target=None, Result=f'Invalid|{str(e)}',
-                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
     def DelVariable(self, variable: str):
         """
@@ -1721,14 +1721,14 @@ class ViewPanel(QWidget):
         """
         log.info(dict(Kind='Action', Type='DelVariable', View=self.View.Name,
                       **gu.func_params(), Target=None, Result='Valid',
-                      TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
         try:
             if variable in self.db.Variables:
                 del self.db.Variables[variable]
         except KeyError:
             log.info(dict(Kind='Action', Type='SetVariable', View=self.View.Name,
                           **gu.func_params(), Target=None, Result='Invalid|NoSuchVarExists',
-                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
     def VarIncrease(self, variable: str):
         """
@@ -1739,7 +1739,7 @@ class ViewPanel(QWidget):
         """
         log.info(dict(Kind='Action', Type='VarIncrease', View=self.View.Name,
                       **gu.func_params(), Target=None, Result='Valid',
-                      TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
         try:
             if variable in self.db.Variables:
                 current_value = self.db.Variables[variable]
@@ -1760,7 +1760,7 @@ class ViewPanel(QWidget):
         except Exception as e:
             log.info(dict(Kind='Action', Type='VarIncrease', View=self.View.Name,
                           **gu.func_params(), Target=None, Result=f'Invalid|{str(e)}',
-                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
     def VarDecrease(self, variable: str):
         """
@@ -1771,7 +1771,7 @@ class ViewPanel(QWidget):
         """
         log.info(dict(Kind='Action', Type='VarDecrease', View=self.View.Name,
                       **gu.func_params(), Target=None, Result='Valid',
-                      TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
         try:
             if variable in self.db.Variables:
                 current_value = self.db.Variables[variable]
@@ -1792,7 +1792,7 @@ class ViewPanel(QWidget):
         except Exception as e:
             log.info(dict(Kind='Action', Type='VarDecrease', View=self.View.Name,
                           **gu.func_params(), Target=None, Result=f'Invalid|{str(e)}',
-                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
     def TextBox(self, message: str, left: int, top: int, duration: float, fgcolor: list, bgcolor: list,
                 font_size: int, bold: bool = False, skiplog: bool = False):
@@ -1808,7 +1808,7 @@ class ViewPanel(QWidget):
         """
         if not skiplog:
             log.info(dict(Kind='Action', Type='TextBox', View=self.View.Name, **gu.func_params(),
-                          Target=None, Result='Success', TimeTime=self.get_task_elapsed(),
+                          Target=None, Result='Success', EnvTime=self.get_task_elapsed(),
                           ViewTime=self.view_elapsed()))
 
         # convert any variable specifiers in msg
@@ -1869,7 +1869,7 @@ class ViewPanel(QWidget):
             if not skiplog:
                 log.info(dict(Kind='Action', Type='ShowObject', View=self.View.Name,
                               **gu.func_params(), Target=None, Result="Invalid|ObjectDoesNotExist",
-                              TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                              EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
             log.debug(e)
         else:
             if str(object_id) in self.View.Objects.keys():
@@ -1877,7 +1877,7 @@ class ViewPanel(QWidget):
                 if not skiplog:
                     log.info(dict(Kind='Action', Type='ShowObject', View=self.View.Name,
                                   **gu.func_params(), Target=None, Result='Valid',
-                                  TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                                  EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
     def HideObject(self, object_id: int, skiplog: bool = False):
         """
@@ -1906,7 +1906,7 @@ class ViewPanel(QWidget):
             if not skiplog:
                 log.info(dict(Kind='Action', Type='HideObject', View=self.View.Name,
                               **gu.func_params(), Target=None, Result="Invalid|ObjectDoesNotExist",
-                              TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                              EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
                 log.debug(e)
         else:
             if str(object_id) in self.View.Objects.keys():
@@ -1914,7 +1914,7 @@ class ViewPanel(QWidget):
                 if not skiplog:
                     log.info(dict(Kind='Action', Type='HideObject', View=self.View.Name,
                                   **gu.func_params(), Target=None, Result='Valid',
-                                  TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                                  EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
     def AllowTake(self, object_id: int):
         """
@@ -1935,11 +1935,11 @@ class ViewPanel(QWidget):
                     break
             log.info(dict(Kind='Action', Type='AllowTake', View=self.View.Name,
                           **gu.func_params(), Target=None, Result='Valid',
-                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
         except Exception as e:
             log.info(dict(Kind='Action', Type='AllowTake', View=self.View.Name,
                           **gu.func_params(), Target=None, Result="Invalid|ObjectDoesNotExist",
-                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
             log.debug(e)
 
     def DisallowTake(self, object_id: int):
@@ -1961,11 +1961,11 @@ class ViewPanel(QWidget):
                     break
             log.info(dict(Kind='Action', Type='DisallowTake', View=self.View.Name,
                           **gu.func_params(), Target=None, Result='Valid',
-                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
         except Exception as e:
             log.info(dict(Kind='Action', Type='DisallowTake', View=self.View.Name,
                           **gu.func_params(), Target=None, Result="Invalid|ObjectDoesNotExist",
-                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
             log.debug(e)
 
     def HideImage(self, image_file: str = ''):
@@ -1978,10 +1978,10 @@ class ViewPanel(QWidget):
             pic_name = Path(image_file).stem
             self.external_pics[pic_name].hide()
             log.info(dict('Action', Type='HideImage', View=self.View.Name, **gu.func_params(), Target=None,
-                          Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                          Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
         except Exception as e:
             log.info(dict('Action', Type='HideImage', View=self.View.Name, **gu.func_params(), Target=None,
-                          Result='Invalid|ObjectDoesNotExist', TimeTime=self.get_task_elapsed(),
+                          Result='Invalid|ObjectDoesNotExist', EnvTime=self.get_task_elapsed(),
                           ViewTime=self.view_elapsed()))
             log.debug(e)
 
@@ -1997,7 +1997,7 @@ class ViewPanel(QWidget):
         """
 
         log.info(dict(Kind='Action', Type='ShowImage', View=self.View.Name, **gu.func_params(),
-                      Target=None, Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Target=None, Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         pic_path = Path(self.options.MediaPath, image_file)
         pic_name = Path(pic_path).stem
@@ -2046,7 +2046,7 @@ class ViewPanel(QWidget):
                 **gu.func_params(),
                 Target=within,
                 Result="Valid",
-                TimeTime=self.get_task_elapsed(),
+                EnvTime=self.get_task_elapsed(),
                 ViewTime=self.view_elapsed(),
             )
         )
@@ -2248,7 +2248,7 @@ class ViewPanel(QWidget):
 
         if str(view_id) not in self.db.Views:
             log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
-                          Result='Invalid|ViewDoesNotExist', TimeTime=self.get_task_elapsed(),
+                          Result='Invalid|ViewDoesNotExist', EnvTime=self.get_task_elapsed(),
                           ViewTime=self.view_elapsed()))
             return
 
@@ -2264,7 +2264,7 @@ class ViewPanel(QWidget):
 
             if video_path.exists() and (self.options.PlayMedia or is_gif):
                 log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
-                              Result='Valid|WithTransition', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                              Result='Valid|WithTransition', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
                 video_name = video_path.stem
                 pos = QPoint(0, 0)
@@ -2290,7 +2290,7 @@ class ViewPanel(QWidget):
             self.parent().prepare_transition(self.grab())
 
         log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
-                      Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
         do_portal()
 
     def ChangeViewImages(self, view_id: int, foreground: str = '', background: str = ''):
@@ -2306,7 +2306,7 @@ class ViewPanel(QWidget):
         if str(view_id) not in self.db.Views:
             log.info(dict(Kind='Action', Type='ChangeViewImages', View=self.View.Name, **gu.func_params(),
                           Target=None, Result='Invalid|ViewDoesNotExist',
-                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
             return
 
         target_view = self.db.Views[str(view_id)]
@@ -2329,11 +2329,11 @@ class ViewPanel(QWidget):
         if changes_made:
             log.info(dict(Kind='Action', Type='ChangeViewImages', View=self.View.Name, **gu.func_params(),
                           Target=f'View{view_id}', Result=f'Valid|{",".join(changes_made)}',
-                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
         else:
             log.info(dict(Kind='Action', Type='ChangeViewImages', View=self.View.Name, **gu.func_params(),
                           Target=f'View{view_id}', Result='Valid|NoChanges',
-                          TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
     def PlaySound(self, sound_file: str, asynchronous: bool = True, volume: float = 1.0, loop: bool = False):
         """
@@ -2358,7 +2358,7 @@ class ViewPanel(QWidget):
             return
 
         log.info(dict(Kind='Action', Type='PlaySound', View=self.View.Name, **gu.func_params(), Target=None,
-                      Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         try:
             self.play_sound(sound_file=str(sound_path.resolve()), asynchronous=asynchronous, loop=loop, volume=volume)
@@ -2397,12 +2397,12 @@ class ViewPanel(QWidget):
 
         if sound_name not in self.sound_controls:
             log.info(dict(Kind='Action', Type='StopSound', View=self.View.Name, **gu.func_params(),
-                          Target=None, Result='Invalid|SoundDoesNotExist', TimeTime=self.get_task_elapsed(),
+                          Target=None, Result='Invalid|SoundDoesNotExist', EnvTime=self.get_task_elapsed(),
                           ViewTime=self.view_elapsed()))
             return
 
         log.info(dict(Kind='Action', Type='StopSound', View=self.View.Name, **gu.func_params(), Target=None,
-                      Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         try:
             self.sound_controls[sound_name].stop()
@@ -2421,7 +2421,7 @@ class ViewPanel(QWidget):
             return
 
         log.info(dict(Kind='Action', Type='StopAllSounds', View=self.View.Name, **gu.func_params(), Target=None,
-                      Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         for sound_player in self.sound_controls.values():
             try:
@@ -2449,12 +2449,12 @@ class ViewPanel(QWidget):
         if not sound_path.exists():
             log.error(f"Background music file does not exist: {sound_path}")
             log.info(dict(Kind='Action', Type='PlayBackgroundMusic', View=self.View.Name, **gu.func_params(),
-                          Target=None, Result='Invalid|FileNotFound', TimeTime=self.get_task_elapsed(),
+                          Target=None, Result='Invalid|FileNotFound', EnvTime=self.get_task_elapsed(),
                           ViewTime=self.view_elapsed()))
             return
 
         log.info(dict(Kind='Action', Type='PlayBackgroundMusic', View=self.View.Name, **gu.func_params(),
-                      Target=None, Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Target=None, Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         # Check cache for pre-converted WAV version of compressed audio
         playback_path = audiocache.get_playback_path(sound_path)
@@ -2481,7 +2481,7 @@ class ViewPanel(QWidget):
             return
 
         log.info(dict(Kind='Action', Type='StopBackgroundMusic', View=self.View.Name, **gu.func_params(),
-                      Target=None, Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Target=None, Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         try:
             audioutils.stop_background_music()
@@ -2511,7 +2511,7 @@ class ViewPanel(QWidget):
             del self.video_controls[video_name]
 
         log.info(dict(Kind='Action', Type='PlayVideo', View=self.View.Name, **gu.func_params(),
-                      Target=None, Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Target=None, Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         pos = QPoint(int(left), int(top))
         size = None
@@ -2558,7 +2558,7 @@ class ViewPanel(QWidget):
             del self.video_controls[video_name]
 
         log.info(dict(Kind='Action', Type='PlayVideoWithin', View=self.View.Name, **gu.func_params(),
-                      Target=None, Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Target=None, Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         target = self.object_pics.get(int(within))
         if target:
@@ -2603,7 +2603,7 @@ class ViewPanel(QWidget):
         if video_name in self.video_controls.keys():
 
             log.info(dict(Kind='Action', Type='StopVideo', View=self.View.Name, **gu.func_params(), Target=None,
-                          Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                          Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
             try:
                 self.video_controls[video_name].close()
@@ -2613,7 +2613,7 @@ class ViewPanel(QWidget):
                 log.error(f'Error pausing video playback for {video_file}: {e}')
         else:
             log.info(dict(Kind='Action', Type='StopVideo', View=self.View.Name, **gu.func_params(),
-                          Target=None, Result='Invalid|VideoNotPlaying', TimeTime=self.get_task_elapsed(),
+                          Target=None, Result='Invalid|VideoNotPlaying', EnvTime=self.get_task_elapsed(),
                           ViewTime=self.view_elapsed()))
             return
 
@@ -2624,7 +2624,7 @@ class ViewPanel(QWidget):
         :mtype action
         """
         log.info(dict(Kind='Action', Type='StopAllVideos', View=self.View.Name, **gu.func_params(), Target=None,
-                      Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         for video_name in list(self.video_controls.keys()):
             try:
@@ -2641,7 +2641,7 @@ class ViewPanel(QWidget):
         :mtype action
         """
         log.info('Action', Type='Quit', View=self.View.Name, Target=None, Result='Valid',
-                 TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed())
+                 EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed())
         self.parent().next_view_id = -1
         self.parent().shutdown_view()
 
@@ -2652,7 +2652,7 @@ class ViewPanel(QWidget):
         :mtype action
         """
         log.info('Action', Type='HideMouse', View=self.View.Name, Target=None, Result='Valid',
-                 TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed())
+                 EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed())
 
         try:
             self.setCursor(Qt.CursorShape.BlankCursor)
@@ -2666,7 +2666,7 @@ class ViewPanel(QWidget):
         :mtype action
         """
         log.info(dict(Kind='Action', Type='ShowMouse', View=self.View.Name, Target=None, Result='Valid',
-                      TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         try:
             self.setCursor(Qt.CursorShape.ArrowCursor)
@@ -2681,7 +2681,7 @@ class ViewPanel(QWidget):
         :mtype action
         """
         log.info(dict(Kind='Action', Type='ShowURL', View=self.View.Name, **gu.func_params(), Target=None,
-                      Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         webbrowser.open(url)
 
@@ -2693,7 +2693,7 @@ class ViewPanel(QWidget):
         :mtype action
         """
         log.info(dict(Kind='Action', Type='RunProgram', View=self.View.Name, **gu.func_params(), Target=None,
-                      Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         if not application:
             log.warning("RunProgram called with empty application path.")
@@ -2755,7 +2755,7 @@ class ViewPanel(QWidget):
         :mtype action
         """
         log.info(dict(Kind='Action', Type='TextDialog', View=self.View.Name, **gu.func_params(), Target=None,
-                      Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         if dialog_kind not in ('info', 'warn', 'error'):
             log.info('Ignoring bad kind parameter ({kind}), using "info" instead.')
@@ -2786,7 +2786,7 @@ class ViewPanel(QWidget):
         :mtype action
         """
         log.info(dict(Kind='Action', Type='InputDialog', View=self.View.Name, **gu.func_params(), Target=None,
-                      Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         _prompt = self.var_in_text(prompt)
         _title = self.var_in_text(title)
@@ -2814,7 +2814,7 @@ class ViewPanel(QWidget):
             return
 
         log.info(dict(Kind='Action', Type='SayText', View=self.View.Name, **gu.func_params(), Target=None,
-                      Result='Valid', TimeTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                      Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
         _text = self.var_in_text(message)  # convert any variable specifiers in the text
         text_hash = gu.string_hash(_text)
