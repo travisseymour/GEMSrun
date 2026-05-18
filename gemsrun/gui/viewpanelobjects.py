@@ -587,9 +587,10 @@ class ViewPocketObject(QLabel):
         drag = QDrag(self)
         drag.setMimeData(mime_data)
 
-        # set cursor to current pixmap which should be the pixmap of the object currently in this pocket
+        # set cursor to the object's image, not the pocket composite
         hotspot = ev.pos() - self.rect().topLeft()
-        base_pixmap = self.pixmap()
+        # Use the object's original image, not the pocket pixmap (which includes pocket background)
+        base_pixmap = QPixmap.fromImage(self.object_info.image) if self.object_info.image else self.pixmap()
         pocket = getattr(self.parent(), "pocket_bitmap", None)
         if pocket and not base_pixmap.isNull():
             target_w = int(pocket.width() * 0.95)
