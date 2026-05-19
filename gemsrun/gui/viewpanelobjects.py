@@ -521,10 +521,14 @@ class ViewPocketObject(QLabel):
         self._apply_cursor()
 
     def position_pockets(self):
+        # Position pockets relative to the view image bottom-left (not window bottom-left)
+        # This keeps them usable in fullscreen mode where the view image may be letterboxed
+        x_off = self.parent().view_top_left_adjustment[0]
+        y_off = self.parent().view_top_left_adjustment[1]
         self.move(
             QPoint(
-                self.pocket_image.width() * self.pocket_id + 5,
-                self.parent().height() - self.pocket_image.height() - 5,
+                x_off + self.pocket_image.width() * self.pocket_id + 5,
+                y_off + self.parent().scaled_image_height - self.pocket_image.height() - 5,
             )
         )
 

@@ -43,6 +43,7 @@ from PySide6.QtGui import (
     QDragMoveEvent,
     QDropEvent,
     QImage,
+    QMouseEvent,
     QPainter,
     QPixmap,
     QPolygon,
@@ -282,6 +283,11 @@ class ViewPanel(QWidget):
             0,
             0,
         ]  # temp, until self.background is potentially scaled
+        self.scaled_image_width: int = self.screen_rect.width()  # temp, until first bg image is loaded
+        self.scaled_image_height: int = self.screen_rect.height()  # temp, until first bg image is loaded
+
+        # Enable mouse tracking for cursor confinement in fullscreen mode
+        self.setMouseTracking(True)
 
         self.init_ui()
 
@@ -541,6 +547,10 @@ class ViewPanel(QWidget):
                 max(0, (stage_height - scaled_height) // 2),
             ]
 
+            # Store scaled image dimensions for pocket and nav positioning
+            self.scaled_image_width = scaled_width
+            self.scaled_image_height = scaled_height
+
             pixmap = pixmap.scaled(
                 scaled_width,
                 scaled_height,
@@ -602,10 +612,11 @@ class ViewPanel(QWidget):
         nav_panel = self._resolve_env_asset("nav_panel.png")
         self.nav_image = self._get_nav_panel_image(nav_panel)
 
+        # Use scaled image dimensions so nav buttons fit within the view image bounds
         nav_cache_key = self._nav_cache_key(
             nav_panel=nav_panel,
-            width=self.width(),
-            height=self.height(),
+            width=self.scaled_image_width,
+            height=self.scaled_image_height,
             nav_extent=self.nav_extent,
         )
 
@@ -613,8 +624,8 @@ class ViewPanel(QWidget):
             if result := uiutils.create_nav_pics(
                 nav_panel_image=self.nav_image,
                 temp_folder=self.options.TempFolder,
-                view_width=self.width(),
-                view_height=self.height(),
+                view_width=self.scaled_image_width,
+                view_height=self.scaled_image_height,
                 nav_extent=self.nav_extent,
             ):
                 self.fail_dialog("Problem Generating Nav Images From Panel", result)
@@ -734,6 +745,41 @@ class ViewPanel(QWidget):
     def dragLeaveEvent(self, ev: QDragLeaveEvent) -> None:
         self.dragging = False
         log.debug("dragging marked as stopped")
+        ev.accept()
+
+    def mouseMoveEvent(self, ev: QMouseEvent) -> None:
+        """
+        Confine cursor to the view image bounds in fullscreen mode.
+        Holding Shift or Ctrl allows the cursor to move freely outside the bounds.
+        """
+        # Allow free movement if Shift or Ctrl is held
+        modifiers = ev.modifiers()
+        if modifiers & (Qt.KeyboardModifier.ShiftModifier | Qt.KeyboardModifier.ControlModifier):
+            ev.accept()
+            return
+
+        # Only confine in fullscreen mode (when there's letterboxing)
+        if not self.view_is_fullscreen:
+            ev.accept()
+            return
+
+        x, y = ev.position().x(), ev.position().y()
+        x_offset, y_offset = self.view_top_left_adjustment
+
+        # Define the view image bounds
+        min_x = x_offset
+        max_x = x_offset + self.scaled_image_width
+        min_y = y_offset
+        max_y = y_offset + self.scaled_image_height
+
+        # Check if cursor is outside bounds
+        nu_x = gu.boundary(min_x, x, max_x)
+        nu_y = gu.boundary(min_y, y, max_y)
+
+        if (x, y) != (nu_x, nu_y):
+            global_pos = self.mapToGlobal(QPoint(int(nu_x), int(nu_y)))
+            QCursor.setPos(global_pos)
+
         ev.accept()
 
     def dropEvent(self, ev: QDropEvent) -> None:
@@ -918,15 +964,18 @@ class ViewPanel(QWidget):
 
                 self.nav_pics[nav_type] = nav_pic
 
-        # position them
+        # Position nav buttons just inside the view image bounds (not window bounds)
+        # This keeps them usable and immersive in fullscreen mode
+        x_off = self.view_top_left_adjustment[0]
+        y_off = self.view_top_left_adjustment[1]
         positions = dict(
             zip(
                 ("NavTop", "NavBottom", "NavLeft", "NavRight"),
                 (
-                    QPoint(0, 0),
-                    QPoint(0, self.height() - self.nav_extent),
-                    QPoint(0, 0),
-                    QPoint(self.width() - self.nav_extent, 0),
+                    QPoint(x_off, y_off),
+                    QPoint(x_off, y_off + self.scaled_image_height - self.nav_extent),
+                    QPoint(x_off, y_off),
+                    QPoint(x_off + self.scaled_image_width - self.nav_extent, y_off),
                 ),
                 strict=False,
             )
