@@ -114,6 +114,7 @@ VALID_CONDITIONS = [
     "ObjectInPocketByName",
     "ObjectIsHiddenByID",
     "ObjectIsHiddenByName",
+    "VarHasString",
 ]
 VALID_TRIGGERS = ["ViewTimePassed", "TotalTimePassed"]
 VALID_ACTIONS = [
@@ -121,6 +122,7 @@ VALID_ACTIONS = [
     "DelVariable",
     "VarIncrease",
     "VarDecrease",
+    "VarAppend",
     "ClearKeyBuffer",
     "TextBox",
     "ShowObject",
@@ -1510,6 +1512,15 @@ class ViewPanel(QWidget):
         """
         return variable not in self.db.Variables
 
+    def VarHasString(self, variable: str, substring: str) -> bool:
+        """
+        This condition returns <i>True</i> if the user created token <b><i>Variable</i></b> exists
+        and its string value contains <b><i>SubString</i></b>.
+        :scope viewobjectglobalpocket
+        :mtype condition
+        """
+        return variable in self.db.Variables and str(substring) in str(self.db.Variables[variable])
+
     def HasViewTimePassed(self, seconds: float) -> bool:
         """
         This condition returns <i>True</i> if at least <b><i>Seconds</i></b> seconds has passed since the current view
@@ -1840,6 +1851,27 @@ class ViewPanel(QWidget):
             log.debug(f'CURRENT VARS:{self.db.Variables}')
         except Exception as e:
             log.info(dict(Kind='Action', Type='VarDecrease', View=self.View.Name,
+                          **gu.func_params(), Target=None, Result=f'Invalid|{str(e)}',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+
+    def VarAppend(self, variable: str, text: str):
+        """
+        This action appends <b><i>Text</i></b> to the string value of <b><i>Variable</i></b>.
+        If <b><i>Variable</i></b> does not exist, it will be created with <b><i>Text</i></b> as its value.
+        :scope viewobjectglobalpocket
+        :mtype action
+        """
+        log.info(dict(Kind='Action', Type='VarAppend', View=self.View.Name,
+                      **gu.func_params(), Target=None, Result='Valid',
+                      EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+        try:
+            if variable in self.db.Variables:
+                self.db.Variables[variable] = str(self.db.Variables[variable]) + str(text)
+            else:
+                self.db.Variables[variable] = str(text)
+            log.debug(f'CURRENT VARS:{self.db.Variables}')
+        except Exception as e:
+            log.info(dict(Kind='Action', Type='VarAppend', View=self.View.Name,
                           **gu.func_params(), Target=None, Result=f'Invalid|{str(e)}',
                           EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 

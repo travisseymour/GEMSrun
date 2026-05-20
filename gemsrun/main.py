@@ -39,6 +39,21 @@ from gemsrun.utils import apputils, audiocache
 app = typer.Typer(add_completion=False, help="GEMSrun command line interface.")
 
 
+def _version_callback(value: bool):
+    if value:
+        from importlib.metadata import version
+
+        print(f"GEMSrun {version('GEMSrun')}")
+        raise typer.Exit()
+
+
+@app.callback(invoke_without_command=True)
+def _main_callback(
+    version: bool = typer.Option(False, "--version", "-V", callback=_version_callback, is_eager=True, help="Show version and exit."),
+):
+    pass
+
+
 def _preload_audio_with_spinner(db: Munch):
     """Preload all compressed audio files with a CLI spinner."""
 
