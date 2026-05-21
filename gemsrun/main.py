@@ -49,9 +49,24 @@ def _version_callback(value: bool):
 
 @app.callback(invoke_without_command=True)
 def _main_callback(
+    ctx: typer.Context,
     version: bool = typer.Option(False, "--version", "-V", callback=_version_callback, is_eager=True, help="Show version and exit."),
 ):
-    pass
+    # If no subcommand was invoked, run the default 'run' command
+    if ctx.invoked_subcommand is None:
+        ctx.invoke(
+            run,
+            env_path=None,
+            user_arg=None,
+            fname=None,
+            user=None,
+            skipdata=None,
+            overwrite=None,
+            debug=None,
+            skipmedia=None,
+            skipgui=False,
+            fullscreen=None,
+        )
 
 
 def _preload_audio_with_spinner(db: Munch):
