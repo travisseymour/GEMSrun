@@ -47,28 +47,6 @@ def _version_callback(value: bool):
         raise typer.Exit()
 
 
-@app.callback(invoke_without_command=True)
-def _main_callback(
-    ctx: typer.Context,
-    version: bool = typer.Option(False, "--version", "-V", callback=_version_callback, is_eager=True, help="Show version and exit."),
-):
-    # If no subcommand was invoked, run the default 'run' command
-    if ctx.invoked_subcommand is None:
-        ctx.invoke(
-            run,
-            env_path=None,
-            user_arg=None,
-            fname=None,
-            user=None,
-            skipdata=None,
-            overwrite=None,
-            debug=None,
-            skipmedia=None,
-            skipgui=False,
-            fullscreen=None,
-        )
-
-
 def _preload_audio_with_spinner(db: Munch):
     """Preload all compressed audio files with a CLI spinner."""
 
@@ -115,8 +93,8 @@ def _handle_clear_cache():
         sys.exit(1)
 
 
-@app.command()
-def run(
+@app.callback(invoke_without_command=True)
+def main_command(
     env_path: str | None = typer.Argument(
         None,
         metavar="FILENAME",
@@ -155,7 +133,11 @@ def run(
     fullscreen: bool | None = typer.Option(
         None, "--fullscreen/--no-fullscreen", "-F", help="Launch runner in fullscreen."
     ),
+    version: bool = typer.Option(
+        False, "--version", "-V", callback=_version_callback, is_eager=True, help="Show version and exit."
+    ),
 ):
+    """Run GEMSrun with the specified environment file."""
     cli_fname = fname or env_path or ""
     cli_user = user or user_arg
 
@@ -296,7 +278,7 @@ def run(
 
 
 def main():
-    # Handle clear-cache command separately to keep 'run' as default
+    # Handle clear-cache command separately
     if len(sys.argv) > 1 and sys.argv[1] == "clear-cache":
         _handle_clear_cache()
     else:
