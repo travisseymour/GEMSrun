@@ -1512,14 +1512,27 @@ class ViewPanel(QWidget):
         """
         return variable not in self.db.Variables
 
-    def VarHasString(self, variable: str, substring: str) -> bool:
+    def VarHasString(self, variable: str, substring: str, logic: str = "or", case_sensitive: bool = True) -> bool:
         """
         This condition returns <i>True</i> if the user created token <b><i>Variable</i></b> exists
-        and its string value contains <b><i>SubString</i></b>.
+        and its string value contains <b><i>SubString</i></b>. SubString may be a comma-separated list.
+        If <b><i>Logic</i></b> is "or", returns True if the variable contains any of the substrings.
+        If <b><i>Logic</i></b> is "and", returns True if the variable contains all of the substrings.
+        If <b><i>CaseSensitive</i></b> is True (default), comparison is case-sensitive.
         :scope viewobjectglobalpocket
         :mtype condition
         """
-        return variable in self.db.Variables and str(substring) in str(self.db.Variables[variable])
+        if variable not in self.db.Variables:
+            return False
+        var_value = str(self.db.Variables[variable])
+        substrings = [s.strip() for s in re.split(r" *, *", str(substring))]
+        if not case_sensitive:
+            var_value = var_value.lower()
+            substrings = [s.lower() for s in substrings]
+        if str(logic).lower() == "and":
+            return all(s in var_value for s in substrings)
+        else:
+            return any(s in var_value for s in substrings)
 
     def HasViewTimePassed(self, seconds: float) -> bool:
         """
