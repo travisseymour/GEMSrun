@@ -320,6 +320,10 @@ class ViewImageObject(QLabel):
             drag_pixmap_with_hand(base_pixmap, hotspot),
             Qt.DropAction.MoveAction,
         )
+        # Set transparent 1x1 pixmap to suppress macOS default drag preview box
+        transparent_pixmap = QPixmap(1, 1)
+        transparent_pixmap.fill(Qt.GlobalColor.transparent)
+        drag.setPixmap(transparent_pixmap)
         drag.setHotSpot(hotspot)
         self.parent().drag_object_bitmap = base_pixmap.copy()
         if self.cursors_enabled and self.open_hand_cursor:
@@ -617,6 +621,10 @@ class ViewPocketObject(QLabel):
             drag_pixmap_with_hand(base_pixmap, hotspot),
             Qt.DropAction.MoveAction,
         )
+        # Set transparent 1x1 pixmap to suppress macOS default drag preview box
+        transparent_pixmap = QPixmap(1, 1)
+        transparent_pixmap.fill(Qt.GlobalColor.transparent)
+        drag.setPixmap(transparent_pixmap)
         drag.setHotSpot(hotspot)
         # cursor remains the default/arrow; drag icon handles the closed hand overlay
         self.parent().drag_object_bitmap = base_pixmap.copy()
