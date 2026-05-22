@@ -55,6 +55,7 @@ import gemsrun
 from gemsrun import log
 from gemsrun.gui import uiutils
 from gemsrun.gui.viewpanelobjects import (
+    DRAG_MIME_TYPE,
     AnimationObject,
     ExternalImageObject,
     NavImageObject,
@@ -785,7 +786,7 @@ class ViewPanel(QWidget):
         ev.accept()
 
     def dropEvent(self, ev: QDropEvent) -> None:
-        log.debug(f'"{ev.mimeData().text()}" was dropped onto nothing in particular.')
+        log.debug(f'"{ev.mimeData().data(DRAG_MIME_TYPE).data().decode()}" was dropped onto nothing in particular.')
         log.debug("dragging marked as stopped")
 
         log.info(

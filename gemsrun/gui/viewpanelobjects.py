@@ -67,6 +67,10 @@ from gemsrun.utils import gemsutils as gu
 if TYPE_CHECKING:  # Avoid circular import at runtime
     from .viewpanel import ViewPanel
 
+# Custom mime type for drag-and-drop. Using setText() causes macOS to display
+# the text as a label during drag, so we use a custom type instead.
+DRAG_MIME_TYPE = "application/x-gemsrun-drag"
+
 
 class HoverTracker(QObject):
     """
@@ -286,7 +290,7 @@ class ViewImageObject(QLabel):
             return
 
         mime_data = QMimeData()
-        mime_data.setText(f"{self.object.Name}|{self.parent().view_id}|{self.object.Id}")
+        mime_data.setData(DRAG_MIME_TYPE, f"{self.object.Name}|{self.parent().view_id}|{self.object.Id}".encode())
 
         drag = QDrag(self)
         drag.setMimeData(mime_data)
@@ -335,7 +339,7 @@ class ViewImageObject(QLabel):
             # source, so without this check every target object would hide itself.
             if self.parent().dragging_object is None:
                 try:
-                    _, _, source_object_id = ev.mimeData().text().split("|")
+                    _, _, source_object_id = ev.mimeData().data(DRAG_MIME_TYPE).data().decode().split("|")
                     if int(source_object_id) == self.object.Id:
                         self.parent().dragging_object = self
                         self.hide()
@@ -345,7 +349,7 @@ class ViewImageObject(QLabel):
             ev.accept()
 
     def dropEvent(self, ev: QDropEvent) -> None:
-        source_object_info = ev.mimeData().text()
+        source_object_info = ev.mimeData().data(DRAG_MIME_TYPE).data().decode()
         source_object_name, source_view_id, source_object_id = source_object_info.split("|")
         if int(source_object_id) == self.object.Id:
             # erroneously picking up us dropping onto ourselves!
@@ -587,7 +591,7 @@ class ViewPocketObject(QLabel):
 
         # create mime data to send to ViewImageObject that this pocket object is dropped on
         mime_data = QMimeData()
-        mime_data.setText(f"{self.object_info.name}|{self.object_info.view_id}|{self.object_info.Id}")
+        mime_data.setData(DRAG_MIME_TYPE, f"{self.object_info.name}|{self.object_info.view_id}|{self.object_info.Id}".encode())
         drag = QDrag(self)
         drag.setMimeData(mime_data)
 
@@ -639,7 +643,7 @@ class ViewPocketObject(QLabel):
             ev.accept()
 
     def dropEvent(self, ev: QDropEvent) -> None:
-        source_object_info = ev.mimeData().text()
+        source_object_info = ev.mimeData().data(DRAG_MIME_TYPE).data().decode()
         source_object_name, source_view_id, source_object_id = source_object_info.split("|")
 
         if self.object_info.Id >= 0:
