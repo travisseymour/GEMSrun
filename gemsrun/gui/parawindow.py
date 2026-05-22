@@ -124,7 +124,10 @@ class ParamDialog(QDialog):
             if latest and version_less_than(__version__, latest):
                 QTimer.singleShot(
                     0,
-                    lambda: self.setWindowTitle(f"GEMSrun v{__version__}    [GEMSrun version {latest} available]"),
+                    lambda: self.setWindowTitle(
+                        f"GEMSrun v{__version__}    "
+                        f"[New version {latest} available! Run: uv tool upgrade gemsrun gemsedit]"
+                    ),
                 )
 
         threading.Thread(target=_do_check, daemon=True).start()
