@@ -116,6 +116,7 @@ VALID_CONDITIONS = [
     "ObjectIsHiddenByID",
     "ObjectIsHiddenByName",
     "VarHasString",
+    "VarLacksString",
 ]
 VALID_TRIGGERS = ["ViewTimePassed", "TotalTimePassed"]
 VALID_ACTIONS = [
@@ -1534,6 +1535,28 @@ class ViewPanel(QWidget):
             return all(s in var_value for s in substrings)
         else:
             return any(s in var_value for s in substrings)
+
+    def VarLacksString(self, variable: str, substring: str, logic: str = "or", case_sensitive: bool = True) -> bool:
+        """
+        This condition returns <i>True</i> if the user created token <b><i>Variable</i></b> does not exist
+        or its string value does not contain <b><i>SubString</i></b>. SubString may be a comma-separated list.
+        If <b><i>Logic</i></b> is "or", returns True if the variable is missing any of the substrings.
+        If <b><i>Logic</i></b> is "and", returns True only if the variable is missing all of the substrings.
+        If <b><i>CaseSensitive</i></b> is True (default), comparison is case-sensitive.
+        :scope viewobjectglobalpocket
+        :mtype condition
+        """
+        if variable not in self.db.Variables:
+            return True
+        var_value = str(self.db.Variables[variable])
+        substrings = [s.strip() for s in re.split(r" *, *", str(substring))]
+        if not case_sensitive:
+            var_value = var_value.lower()
+            substrings = [s.lower() for s in substrings]
+        if str(logic).lower() == "and":
+            return all(s not in var_value for s in substrings)
+        else:
+            return any(s not in var_value for s in substrings)
 
     def HasViewTimePassed(self, seconds: float) -> bool:
         """
