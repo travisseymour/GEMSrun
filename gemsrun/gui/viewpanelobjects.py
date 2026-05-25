@@ -1031,7 +1031,7 @@ class TextBoxObject(QLabel):
         style_sheet += "padding: 2px; "
         style_sheet += "position: absolute; "
         if bold:
-            style_sheet += "font-style: bold"
+            style_sheet += "font-weight: bold; "
         style_sheet += " }"
         self.setStyleSheet(style_sheet)
 
