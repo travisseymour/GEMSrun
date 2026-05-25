@@ -1947,6 +1947,9 @@ class ViewPanel(QWidget):
         # convert any variable specifiers in msg
         _message = self.var_in_text(message)
 
+        # Convert escape sequences to actual characters
+        _message = _message.replace("\\n", "\n").replace("\\t", "\t")
+
         if (left, top) == (-1, -1):
             pos = self.mapFromGlobal(QCursor.pos())
             left, top = pos.x(), pos.y()
@@ -2995,6 +2998,8 @@ class ViewPanel(QWidget):
             log.info('Ignoring bad kind parameter ({kind}), using "info" instead.')
 
         msg = self.var_in_text(message)
+        # Convert escape sequences to actual characters
+        msg = msg.replace("\\n", "\n").replace("\\t", "\t")
 
         msgbox = QMessageBox(self)
         msgbox.setWindowTitle(title)
