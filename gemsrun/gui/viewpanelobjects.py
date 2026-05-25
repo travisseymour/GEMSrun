@@ -48,6 +48,7 @@ from PySide6.QtGui import (
     QMovie,
     QPainter,
     QPainterPath,
+    QPen,
     QPixmap,
     QPolygon,
     QRegion,
@@ -122,6 +123,7 @@ class ViewImageObject(QLabel):
         self.scale = scale
         self.polygon_points = polygon_points or []
         self._mask_needs_update = bool(self.polygon_points)  # Flag for deferred mask setup
+        self._highlight_info: dict | None = None  # Stores {"color": QColor, "thickness": int}
 
         # Check if this is an invisible object with click actions (hotspot)
         has_click_action = any(
@@ -201,6 +203,21 @@ class ViewImageObject(QLabel):
         self.setVisible(True)
         self.update()
 
+    def set_highlight(self, color: QColor, thickness: int):
+        """Set a highlight to be drawn around this object's polygon/bounds.
+
+        Args:
+            color: Color for the highlight border
+            thickness: Pen thickness in pixels
+        """
+        self._highlight_info = {"color": color, "thickness": thickness}
+        self.update()
+
+    def clear_highlight(self):
+        """Remove any highlight from this object."""
+        self._highlight_info = None
+        self.update()
+
     def _set_polygon_mask(self):
         """Set a mask on the widget so only polygon area receives mouse events."""
         if not self.polygon_points:
@@ -254,6 +271,21 @@ class ViewImageObject(QLabel):
             show_name()
         if self.show_bounds or (self.hovered and "Frame" in self.db.Global.Options.ObjectHover):
             show_frame()
+
+        # Draw highlight if set via HighlightObject action
+        if self._highlight_info:
+            pen = QPen(self._highlight_info["color"], self._highlight_info["thickness"])
+            pen.setStyle(Qt.PenStyle.SolidLine)
+            painter.setPen(pen)
+            if self.polygon_points:
+                geom = self.geometry()
+                local_points = [QPoint(p[0] - geom.x(), p[1] - geom.y()) for p in self.polygon_points]
+                polygon = QPolygon(local_points)
+                painter.drawPolygon(polygon)
+            else:
+                # Fallback to rectangle if no polygon points
+                r = self.rect()
+                painter.drawRect(QRect(r.left(), r.top(), r.width() - 1, r.height() - 1))
 
     def _create_polygon_clipped_pixmap(self, source: QPixmap) -> QPixmap:
         """Create a polygon-clipped version of the source pixmap with transparency outside the polygon."""

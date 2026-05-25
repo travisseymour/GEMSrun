@@ -159,6 +159,8 @@ VALID_ACTIONS = [
     "TextBoxHTML",
     "RunProgram",
     "ChangeViewImages",
+    "HighlightObject",
+    "UnHighlightObject",
 ]
 
 
@@ -2046,6 +2048,80 @@ class ViewPanel(QWidget):
                     log.info(dict(Kind='Action', Type='HideObject', View=self.View.Name,
                                   **gu.func_params(), Target=None, Result='Valid',
                                   EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+
+    def HighlightObject(self, object_id: int, color: str = "yellow", line_thickness: int = 4):
+        """
+        This action draws a highlight around the specified object's bounding shape
+        in the current view. Only objects in the current view can be highlighted.
+        The highlight does not persist across view changes.
+
+        :scope viewobjectglobalpocket
+        :mtype action
+        """
+        # Check if object is in current view
+        if str(object_id) not in self.View.Objects.keys():
+            log.info(dict(Kind='Action', Type='HighlightObject', View=self.View.Name,
+                          **gu.func_params(), Target=None, Result='Invalid|ObjectNotInCurrentView',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            return
+
+        if object_id not in self.object_pics:
+            log.info(dict(Kind='Action', Type='HighlightObject', View=self.View.Name,
+                          **gu.func_params(), Target=None, Result='Invalid|ObjectWidgetNotFound',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            return
+
+        try:
+            # Parse color - handle both string color names and RGBA format
+            from PySide6.QtGui import QColor
+            highlight_color = QColor(color) if isinstance(color, str) else QColor("yellow")
+            if not highlight_color.isValid():
+                highlight_color = QColor("yellow")
+
+            # Ensure thickness is positive
+            thickness = max(1, int(line_thickness))
+
+            self.object_pics[object_id].set_highlight(highlight_color, thickness)
+            log.info(dict(Kind='Action', Type='HighlightObject', View=self.View.Name,
+                          **gu.func_params(), Target=None, Result='Valid',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+        except Exception as e:
+            log.info(dict(Kind='Action', Type='HighlightObject', View=self.View.Name,
+                          **gu.func_params(), Target=None, Result=f'Invalid|{e}',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            log.debug(e)
+
+    def UnHighlightObject(self, object_id: int):
+        """
+        This action removes any highlight from the specified object in the current view.
+        If no highlight exists, this action has no effect.
+
+        :scope viewobjectglobalpocket
+        :mtype action
+        """
+        # Check if object is in current view
+        if str(object_id) not in self.View.Objects.keys():
+            log.info(dict(Kind='Action', Type='UnHighlightObject', View=self.View.Name,
+                          **gu.func_params(), Target=None, Result='Invalid|ObjectNotInCurrentView',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            return
+
+        if object_id not in self.object_pics:
+            log.info(dict(Kind='Action', Type='UnHighlightObject', View=self.View.Name,
+                          **gu.func_params(), Target=None, Result='Invalid|ObjectWidgetNotFound',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            return
+
+        try:
+            self.object_pics[object_id].clear_highlight()
+            log.info(dict(Kind='Action', Type='UnHighlightObject', View=self.View.Name,
+                          **gu.func_params(), Target=None, Result='Valid',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+        except Exception as e:
+            log.info(dict(Kind='Action', Type='UnHighlightObject', View=self.View.Name,
+                          **gu.func_params(), Target=None, Result=f'Invalid|{e}',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            log.debug(e)
 
     def AllowTake(self, object_id: int):
         """
