@@ -302,6 +302,7 @@ class ViewPanel(QWidget):
 
         self.view_start_time: float = timeit.default_timer()
         self.key_buffer: str = ""
+        self._portal_delay_active: bool = False  # True during PortalTo delay period
 
         # Defer start_timers to allow GUI to render first
         QTimer.singleShot(0, self.start_timers)
@@ -1162,6 +1163,11 @@ class ViewPanel(QWidget):
         return sorted(obj.Actions.values(), key=lambda a: a.RowOrder) if obj.Actions else []
 
     def do_action(self, condition: str, action: str):
+        # Ignore actions during portal delay period
+        if self._portal_delay_active:
+            log.debug(f"do_action ignored during portal delay: {action}")
+            return
+
         log.debug(
             f"do_action fired for view {self.view_id} at vt+ {timeit.default_timer() - self.view_start_time:.3f}s, action: {action}"
         )
@@ -2351,11 +2357,13 @@ class ViewPanel(QWidget):
 
         return ordered
 
-    def PortalTo(self, view_id: int, vid_file: str | None = ''):
+    def PortalTo(self, view_id: int, vid_file: str | None = '', delay: float = 0.0):
         """
         This action causes GEMS to load <b><i>ViewId</i></b>. If <b><i>VidFile</i></b> is provided
         and exists, the video will play fullscreen first as a transition effect. The view change
-        occurs when the video finishes or is right-clicked.
+        occurs when the video finishes or is right-clicked. If <b><i>Delay</i></b> is greater than
+        zero, the portal waits that many seconds before executing. During the delay, the mouse is
+        hidden and no actions are triggered.
 
         :scope viewobjectglobalpocket
         :mtype action
@@ -2363,6 +2371,12 @@ class ViewPanel(QWidget):
         # Normalize vid_file for backward compatibility with old PortalTo(int) calls
         if not isinstance(vid_file, str):
             vid_file = ''
+
+        # Normalize delay for backward compatibility
+        try:
+            delay = float(delay) if delay else 0.0
+        except (ValueError, TypeError):
+            delay = 0.0
 
         if str(view_id) not in self.db.Views:
             log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
@@ -2372,44 +2386,60 @@ class ViewPanel(QWidget):
 
         def do_portal():
             """Perform the actual portal to the target view."""
+            # Re-enable actions and restore cursor before portal
+            self._portal_delay_active = False
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+
             self.parent().next_view_id = view_id
             self.parent().shutdown_view()
 
-        # Check if a transition video was specified
-        if vid_file:
-            video_path = Path(vid_file) if Path(vid_file).is_file() else Path(self.options.MediaPath, vid_file)
-            is_gif = video_path.suffix.lower() == '.gif'
+        def do_portal_with_delay():
+            """Handle portal with optional delay."""
+            # Check if a transition video was specified
+            if vid_file:
+                video_path = Path(vid_file) if Path(vid_file).is_file() else Path(self.options.MediaPath, vid_file)
+                is_gif = video_path.suffix.lower() == '.gif'
 
-            if video_path.exists() and (self.options.PlayMedia or is_gif):
-                log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
-                              Result='Valid|WithTransition', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+                if video_path.exists() and (self.options.PlayMedia or is_gif):
+                    log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
+                                  Result='Valid|WithTransition', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
-                video_name = video_path.stem
-                pos = QPoint(0, 0)
-                size = self.size()
+                    video_name = video_path.stem
+                    pos = QPoint(0, 0)
+                    size = self.size()
 
-                try:
-                    if is_gif:
-                        video = AnimationObject(self, video_path=video_path, pos=pos, size=size, start=0,
+                    try:
+                        if is_gif:
+                            video = AnimationObject(self, video_path=video_path, pos=pos, size=size, start=0,
+                                                    volume=self.options.Volume * 1000, loop=False, on_finish=do_portal)
+                        else:
+                            video = VideoObject(self, video_path=video_path, pos=pos, size=size, start=0,
                                                 volume=self.options.Volume * 1000, loop=False, on_finish=do_portal)
-                    else:
-                        video = VideoObject(self, video_path=video_path, pos=pos, size=size, start=0,
-                                            volume=self.options.Volume * 1000, loop=False, on_finish=do_portal)
-                    self.video_controls[video_name] = video
-                    self.reset_z_pos()
-                    return
-                except Exception as e:
-                    log.error(f'Unable to create transition video from {str(video_path.resolve())}: {e}')
-                    # Fall through to do portal without video
+                        self.video_controls[video_name] = video
+                        self.reset_z_pos()
+                        return
+                    except Exception as e:
+                        log.error(f'Unable to create transition video from {str(video_path.resolve())}: {e}')
+                        # Fall through to do portal without video
 
-        # No transition video or video failed - check for room transition effect
-        transition_name = self.parent()._resolve_transition()
-        if transition_name:
-            self.parent().prepare_transition(self.grab())
+            # No transition video or video failed - check for room transition effect
+            transition_name = self.parent()._resolve_transition()
+            if transition_name:
+                self.parent().prepare_transition(self.grab())
 
-        log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
-                      Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
-        do_portal()
+            log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
+                          Result='Valid', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            do_portal()
+
+        # If delay is positive, hide mouse, disable actions, and schedule portal
+        if delay > 0:
+            log.info(dict(Kind='Action', Type='PortalTo', View=self.View.Name, **gu.func_params(), Target=None,
+                          Result='Valid|Delayed', EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            self._portal_delay_active = True
+            self.setCursor(Qt.CursorShape.BlankCursor)
+            QTimer.singleShot(int(delay * 1000), self, do_portal_with_delay)
+        else:
+            do_portal_with_delay()
 
     def ChangeViewImages(self, view_id: int, foreground: str = '', background: str = ''):
         """
