@@ -595,7 +595,9 @@ class ViewPocketObject(QLabel):
 
         # create mime data to send to ViewImageObject that this pocket object is dropped on
         mime_data = QMimeData()
-        mime_data.setData(DRAG_MIME_TYPE, f"{self.object_info.name}|{self.object_info.view_id}|{self.object_info.Id}".encode())
+        mime_data.setData(
+            DRAG_MIME_TYPE, f"{self.object_info.name}|{self.object_info.view_id}|{self.object_info.Id}".encode()
+        )
         drag = QDrag(self)
         drag.setMimeData(mime_data)
 

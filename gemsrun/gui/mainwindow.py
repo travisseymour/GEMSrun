@@ -48,6 +48,8 @@ class MainWin(QMainWindow):
         self.next_view_id: int = -1
         self.view_window: ViewPanel | None = None
         self.pocket_objects: dict[int, ViewPocketObject] | None = None
+        self.mouse_hidden: bool = False  # Persistent state for HideMouse/ShowMouse
+        self.pockets_hidden: bool = False  # Persistent state for HidePockets/ShowPockets
         self.note_window = None
         self._transition_overlay: QLabel | None = None
         self._transition_clip = None

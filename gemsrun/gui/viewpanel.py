@@ -271,7 +271,10 @@ class ViewPanel(QWidget):
         self.setAcceptDrops(True)  # allow drops to nothing
         cursors = get_custom_cursors()
         self.arrow_cursor = cursors.get("arrow")
-        if self.arrow_cursor:
+        # Apply persistent mouse_hidden state if set, otherwise use default cursor
+        if self.parent().mouse_hidden:
+            self.setCursor(Qt.CursorShape.BlankCursor)
+        elif self.arrow_cursor:
             self.setCursor(self.arrow_cursor)
         else:
             self.setCursor(Qt.CursorShape.ArrowCursor)
@@ -938,7 +941,9 @@ class ViewPanel(QWidget):
 
         self.parent().pocket_objects = Munch({i: ViewPocketObject(self, i) for i in range(self.options.Pocketcount)})
         for pocket in self.parent().pocket_objects.values():
-            pocket.show()
+            # Respect persistent pockets_hidden state
+            if not self.parent().pockets_hidden:
+                pocket.show()
             pocket.raise_()
 
         log.debug("Pockets created.")
@@ -948,7 +953,9 @@ class ViewPanel(QWidget):
         for pocket_object in self.parent().pocket_objects.values():
             pocket_object.init_pocket_image()
             pocket_object.setParent(self)
-            pocket_object.show()
+            # Respect persistent pockets_hidden state
+            if not self.parent().pockets_hidden:
+                pocket_object.show()
             pocket_object.raise_()
         log.debug("Pockets reloaded.")
 
@@ -2795,13 +2802,15 @@ class ViewPanel(QWidget):
 
     def HideMouse(self):
         """
-        This action hides the mouse cursor.
+        This action hides the mouse cursor. The cursor remains hidden across view changes
+        until ShowMouse() is called.
         :scope viewobjectglobalpocket
         :mtype action
         """
         log.info('Action', Type='HideMouse', View=self.View.Name, Target=None, Result='Valid',
                  EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed())
 
+        self.parent().mouse_hidden = True
         try:
             self.setCursor(Qt.CursorShape.BlankCursor)
         except Exception as e:
@@ -2816,6 +2825,7 @@ class ViewPanel(QWidget):
         log.info(dict(Kind='Action', Type='ShowMouse', View=self.View.Name, Target=None, Result='Valid',
                       EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
 
+        self.parent().mouse_hidden = False
         try:
             self.setCursor(Qt.CursorShape.ArrowCursor)
         except Exception as e:
@@ -3010,10 +3020,12 @@ class ViewPanel(QWidget):
 
     def HidePockets(self):
         """
-        This action hides all active pockets.
+        This action hides all active pockets. Pockets remain hidden across view changes
+        until ShowPockets() is called.
         :scope viewobjectglobalpocket
         :mtype action
         """
+        self.parent().pockets_hidden = True
         for pocket_pic in self.parent().pocket_objects:
             self.parent().pocket_objects[pocket_pic].hide()
 
@@ -3023,6 +3035,7 @@ class ViewPanel(QWidget):
         :scope viewobjectglobalpocket
         :mtype action
         """
+        self.parent().pockets_hidden = False
         for pocket_pic in self.parent().pocket_objects:
             self.parent().pocket_objects[pocket_pic].show()
 

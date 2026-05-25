@@ -219,7 +219,7 @@ def setup_session(args: Munch) -> Munch:
         print("connectivity established, TTS should be available.")
         database.Global.Options.TTSFolder = find_tts_folder(media_folder=media_path, temp_folder=temp_folder)
         if database.Global.Options.Preloadresources:
-            print("pre-rendering TTS resources...",end='')
+            print("pre-rendering TTS resources...", end="")
             try:
                 database.Global.Options.TTSEnabled = render_tts_from_google(db=database)
                 print("finished pre-rendering successfully!")
