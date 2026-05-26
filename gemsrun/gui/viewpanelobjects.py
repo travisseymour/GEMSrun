@@ -553,7 +553,9 @@ class ViewPocketObject(QLabel):
             painter.end()
 
         self.setPixmap(self.pocket_image)
-        self.show()
+        # Respect persistent pockets_hidden state from MainWin
+        if not self.parent().parent().pockets_hidden:
+            self.show()
 
         # make sure pockets stay at the bottom of the view
         self.position_pockets()

@@ -2061,6 +2061,7 @@ class ViewPanel(QWidget):
         :scope viewobjectglobalpocket
         :mtype action
         """
+        log.debug(f"HighlightObject called with object_id={object_id}, color={color!r}, line_thickness={line_thickness}")
         # Check if object is in current view
         if str(object_id) not in self.View.Objects.keys():
             log.info(dict(Kind='Action', Type='HighlightObject', View=self.View.Name,
@@ -2075,9 +2076,24 @@ class ViewPanel(QWidget):
             return
 
         try:
-            # Parse color - handle both string color names and RGBA format
+            # Parse color - handle string names, RGBA list format, or fallback to yellow
             from PySide6.QtGui import QColor
-            highlight_color = QColor(color) if isinstance(color, str) else QColor("yellow")
+            if isinstance(color, str):
+                highlight_color = QColor(color)
+            elif isinstance(color, (list, tuple)) and len(color) >= 4:
+                # Format: ['Name', R, G, B, A] or ['Name', R, G, B] or [R, G, B, A]
+                # Skip the name string if present, use the RGBA values
+                if isinstance(color[0], str):
+                    # ['Red', 255, 0, 0, 255] -> use RGBA values
+                    r, g, b = int(color[1]), int(color[2]), int(color[3])
+                    a = int(color[4]) if len(color) > 4 else 255
+                else:
+                    # [255, 0, 0, 255] -> direct RGBA
+                    r, g, b = int(color[0]), int(color[1]), int(color[2])
+                    a = int(color[3]) if len(color) > 3 else 255
+                highlight_color = QColor(r, g, b, a)
+            else:
+                highlight_color = QColor("yellow")
             if not highlight_color.isValid():
                 highlight_color = QColor("yellow")
 
