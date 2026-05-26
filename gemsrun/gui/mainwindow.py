@@ -29,6 +29,7 @@ from gemsrun import log
 from gemsrun.gui.infowindow import InfoDialog
 from gemsrun.gui.viewpanel import ViewPanel
 from gemsrun.gui.viewpanelobjects import ViewPocketObject
+from gemsrun.utils import audioutils
 
 _TRANSITION_MAP = {
     "none": None,
@@ -224,6 +225,12 @@ class MainWin(QMainWindow):
             self.note_window.notes.SetLabel(text)
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        # Stop all audio immediately
+        audioutils.stop_background_music()
+        with contextlib.suppress(Exception):
+            from pygame import mixer
+
+            mixer.stop()  # Stop all sound effects
         if self._transition_clip:
             self._transition_clip.stop()
             self._transition_clip = None

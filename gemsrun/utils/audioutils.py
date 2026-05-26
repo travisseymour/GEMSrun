@@ -55,6 +55,18 @@ def _cleanup_mixer():
     """Cleanup function to be called at exit"""
     if MIXER_AVAILABLE:
         try:
+            # Stop all playing sounds
+            mixer.stop()
+            log.debug("All sounds stopped")
+        except Exception as e:
+            log.debug(f"Error stopping sounds: {e}")
+        try:
+            # Stop background music
+            pygame_mixer.music.stop()
+            log.debug("Background music stopped")
+        except Exception as e:
+            log.debug(f"Error stopping background music: {e}")
+        try:
             mixer.quit()
             log.debug("pygame.mixer cleaned up")
         except Exception as e:
