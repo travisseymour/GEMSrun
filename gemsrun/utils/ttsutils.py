@@ -41,7 +41,7 @@ def _download_tts_mp3(speech: str, speech_hash: str, temp_folder: Path) -> Path 
     """Download a single TTS phrase as mp3. Returns the mp3 path on success."""
     temp_mp3 = temp_folder / f"speech_{speech_hash}.mp3"
     try:
-        tts = gTTS(speech)
+        tts = gTTS(speech, timeout=20)
         tts.save(str(temp_mp3))
         return temp_mp3
     except Exception as e:
