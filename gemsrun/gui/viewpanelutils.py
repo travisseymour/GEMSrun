@@ -19,9 +19,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from functools import lru_cache
 from pathlib import Path
 import re
+import sys
 
 from PySide6.QtCore import QPoint, QSize, Qt
-from PySide6.QtGui import QColor, QCursor, QPainter, QPen, QPixmap
+from PySide6.QtGui import QColor, QCursor, QDrag, QPainter, QPen, QPixmap
 
 import gemsrun
 from gemsrun.utils.apputils import get_resource
@@ -74,6 +75,34 @@ def drag_pixmap_with_hand(pixmap: QPixmap, hotspot: QPoint) -> QPixmap:
 
     painter.end()
     return drag_pixmap
+
+
+def configure_drag_visuals(drag: QDrag, base_pixmap: QPixmap, hotspot: QPoint) -> None:
+    """Configure drag cursor/pixmap so the drop target is at the centre of the drag image.
+
+    On Linux, ``setDragCursor`` already centres the image on the pointer, so we
+    use it directly.  On macOS and Windows the drag-cursor hotspot is fixed at
+    (0, 0) (top-left), so we use ``setPixmap`` + ``setHotSpot`` instead —
+    which *does* honour a custom hotspot — and hide the system cursor with a
+    transparent ``setDragCursor``.
+    """
+    transparent = QPixmap(1, 1)
+    transparent.fill(Qt.GlobalColor.transparent)
+
+    if sys.platform == "linux":
+        drag.setDragCursor(
+            drag_pixmap_with_hand(base_pixmap, hotspot),
+            Qt.DropAction.MoveAction,
+        )
+        drag.setPixmap(transparent)
+        drag.setHotSpot(hotspot)
+    else:
+        # macOS / Windows: setPixmap + setHotSpot positions the image so
+        # that its centre is at the pointer (and thus the drop point).
+        center = QPoint(base_pixmap.width() // 2, base_pixmap.height() // 2)
+        drag.setPixmap(drag_pixmap_with_hand(base_pixmap, center))
+        drag.setHotSpot(center)
+        drag.setDragCursor(transparent, Qt.DropAction.MoveAction)
 
 
 def _cursor_from_file(rel_path: str, default_shape: Qt.CursorShape) -> QCursor:
