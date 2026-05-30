@@ -117,6 +117,8 @@ VALID_CONDITIONS = [
     "ObjectIsHiddenByName",
     "VarHasString",
     "VarLacksString",
+    "IsShaded",
+    "IsNotShaded",
 ]
 VALID_TRIGGERS = ["ViewTimePassed", "TotalTimePassed"]
 VALID_ACTIONS = [
@@ -161,6 +163,9 @@ VALID_ACTIONS = [
     "ChangeViewImages",
     "HighlightObject",
     "UnHighlightObject",
+    "ToggleObjectShade",
+    "ShadeObject",
+    "UnshadeObject",
 ]
 
 
@@ -308,6 +313,7 @@ class ViewPanel(QWidget):
         self.view_start_time: float = timeit.default_timer()
         self.key_buffer: str = ""
         self._portal_delay_active: bool = False  # True during PortalTo delay period
+        self._current_action_object_id: int | None = None  # Set when processing object actions
 
         # Defer start_timers to allow GUI to render first
         QTimer.singleShot(0, self.start_timers)
@@ -862,6 +868,13 @@ class ViewPanel(QWidget):
             if not _object.Visible:
                 self.object_pics[_object.Id].hide()
 
+            # Apply persistent shading if this object was previously shaded
+            if _object.Id in self.parent().shaded_objects:
+                from PySide6.QtGui import QColor
+
+                r, g, b, a = self.parent().shaded_objects[_object.Id]
+                self.object_pics[_object.Id].set_shade(QColor(r, g, b, a))
+
     def make_action_timer(self, condition: str, action: str, when_secs: float):
         log.debug(f'SETTING A TIMER TO "{action}" in {when_secs * 1000} ms if condition "{condition}" is met.')
         QTimer.singleShot(
@@ -1187,10 +1200,16 @@ class ViewPanel(QWidget):
         # find the object that got clicked
         _object = self.View.Objects[str(object_id)]
 
+        # Set context for IsShaded/IsNotShaded conditions (use actual object ID, not linked source)
+        self._current_action_object_id = object_id
+
         # Use helper to resolve linked object actions if applicable
         for action in self._get_object_actions(_object):
             if action.Enabled and action.Trigger == "MouseClick()":
                 self.do_action(action.Condition, action.Action)
+
+        # Clear context after processing
+        self._current_action_object_id = None
 
     def handle_pocket_right_click(self, pocket_id: int, quiet: bool = False):
         # get handy info from pocket about object it holds
@@ -1363,9 +1382,15 @@ class ViewPanel(QWidget):
             )
             return
 
+        # Set context for IsShaded/IsNotShaded conditions
+        self._current_action_object_id = target_id
+
         for action in target_actions:
             if action.Enabled and action.Trigger.replace(" ", "") == trigger:
                 self.do_action(action.Condition, action.Action)
+
+        # Clear context after processing
+        self._current_action_object_id = None
 
     def handle_key_press(self, key_code):
         allowed = string.digits + string.ascii_letters + string.punctuation + string.whitespace
@@ -1706,6 +1731,30 @@ class ViewPanel(QWidget):
             if obj.Name == name and not obj.Visible:
                 return True
         return False
+
+    def IsShaded(self) -> bool:
+        """
+        This condition returns <i>True</i> if the current object (the one whose action is being processed)
+        is currently shaded. This condition only works in object-level actions.
+        :scope object
+        :mtype condition
+        """
+        if self._current_action_object_id is None:
+            log.warning("IsShaded() called outside of object action context")
+            return False
+        return int(self._current_action_object_id) in self.parent().shaded_objects
+
+    def IsNotShaded(self) -> bool:
+        """
+        This condition returns <i>True</i> if the current object (the one whose action is being processed)
+        is not currently shaded. This condition only works in object-level actions.
+        :scope object
+        :mtype condition
+        """
+        if self._current_action_object_id is None:
+            log.warning("IsNotShaded() called outside of object action context")
+            return True
+        return int(self._current_action_object_id) not in self.parent().shaded_objects
 
     # --------------------------------------------
     # >>>>>>>>>>> Trigger Handlers <<<<<<<<<<<<<<<<
@@ -2139,6 +2188,170 @@ class ViewPanel(QWidget):
         except Exception as e:
             log.info(dict(Kind='Action', Type='UnHighlightObject', View=self.View.Name,
                           **gu.func_params(), Target=None, Result=f'Invalid|{e}',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            log.debug(e)
+
+    def _find_objects_by_name_substring(self, name_substring: str) -> list:
+        """
+        Find all objects across all views whose name contains the given substring.
+        Returns a list of (view_id, object_id, object_name) tuples.
+        """
+        matching_objects = []
+        for view_id, view in self.db.Views.items():
+            for obj_id, obj in view.Objects.items():
+                if name_substring in obj.Name:
+                    matching_objects.append((int(view_id), int(obj_id), obj.Name))
+        return matching_objects
+
+    def _parse_shade_color(self, color):
+        """Parse color parameter and return a QColor object."""
+        from PySide6.QtGui import QColor
+        if isinstance(color, str):
+            if color.startswith('[') or color.startswith('('):
+                try:
+                    color = eval(color)
+                except Exception:
+                    return QColor(color) if QColor(color).isValid() else QColor(255, 0, 0, 128)
+            if isinstance(color, str):
+                return QColor(color) if QColor(color).isValid() else QColor(255, 0, 0, 128)
+        if isinstance(color, (list, tuple)) and len(color) >= 4:
+            if isinstance(color[0], str):
+                r, g, b = int(color[1]), int(color[2]), int(color[3])
+                a = int(color[4]) if len(color) > 4 else 128
+            else:
+                r, g, b = int(color[0]), int(color[1]), int(color[2])
+                a = int(color[3]) if len(color) > 3 else 128
+            return QColor(r, g, b, a)
+        return QColor(255, 0, 0, 128)
+
+    def ToggleObjectShade(self, name_substring: str, color: str = "['Red',255,0,0,128]"):
+        """
+        This action toggles shading on all objects whose name contains the specified
+        substring. If the first matching object is shaded, all matching objects are
+        unshaded. If not shaded, all matching objects are shaded with the specified
+        color. The shade persists across view changes.
+
+        :scope viewobjectglobalpocket
+        :mtype action
+        """
+        log.debug(f"ToggleObjectShade called with name_substring={name_substring!r}, color={color!r}")
+
+        matching_objects = self._find_objects_by_name_substring(name_substring)
+
+        if not matching_objects:
+            log.info(dict(Kind='Action', Type='ToggleObjectShade', View=self.View.Name,
+                          **gu.func_params(), Target=name_substring, Result='Invalid|NoMatchingObjects',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            return
+
+        try:
+            # Check if first matching object is shaded
+            first_obj_id = matching_objects[0][1]
+            is_shaded = first_obj_id in self.parent().shaded_objects
+
+            if is_shaded:
+                # Unshade all matching objects
+                for _view_id, obj_id, _obj_name in matching_objects:
+                    if obj_id in self.parent().shaded_objects:
+                        del self.parent().shaded_objects[obj_id]
+                    if obj_id in self.object_pics:
+                        self.object_pics[obj_id].clear_shade()
+
+                log.info(dict(Kind='Action', Type='ToggleObjectShade', View=self.View.Name,
+                              **gu.func_params(), Target=name_substring,
+                              Result=f'Valid|Unshaded|{len(matching_objects)} objects',
+                              EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            else:
+                # Shade all matching objects
+                shade_color = self._parse_shade_color(color)
+                color_tuple = (shade_color.red(), shade_color.green(), shade_color.blue(), shade_color.alpha())
+
+                for _view_id, obj_id, _obj_name in matching_objects:
+                    self.parent().shaded_objects[obj_id] = color_tuple
+                    if obj_id in self.object_pics:
+                        self.object_pics[obj_id].set_shade(shade_color)
+
+                log.info(dict(Kind='Action', Type='ToggleObjectShade', View=self.View.Name,
+                              **gu.func_params(), Target=name_substring,
+                              Result=f'Valid|Shaded|{len(matching_objects)} objects',
+                              EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+        except Exception as e:
+            log.info(dict(Kind='Action', Type='ToggleObjectShade', View=self.View.Name,
+                          **gu.func_params(), Target=name_substring, Result=f'Invalid|{e}',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            log.debug(e)
+
+    def ShadeObject(self, name_substring: str, color: str = "['Red',255,0,0,128]"):
+        """
+        This action applies a filled shade over all objects whose name contains the
+        specified substring. The shade persists across view changes.
+
+        :scope viewobjectglobalpocket
+        :mtype action
+        """
+        log.debug(f"ShadeObject called with name_substring={name_substring!r}, color={color!r}")
+
+        matching_objects = self._find_objects_by_name_substring(name_substring)
+
+        if not matching_objects:
+            log.info(dict(Kind='Action', Type='ShadeObject', View=self.View.Name,
+                          **gu.func_params(), Target=name_substring, Result='Invalid|NoMatchingObjects',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            return
+
+        try:
+            shade_color = self._parse_shade_color(color)
+            color_tuple = (shade_color.red(), shade_color.green(), shade_color.blue(), shade_color.alpha())
+
+            for _view_id, obj_id, _obj_name in matching_objects:
+                self.parent().shaded_objects[obj_id] = color_tuple
+                if obj_id in self.object_pics:
+                    self.object_pics[obj_id].set_shade(shade_color)
+
+            log.info(dict(Kind='Action', Type='ShadeObject', View=self.View.Name,
+                          **gu.func_params(), Target=name_substring,
+                          Result=f'Valid|Shaded|{len(matching_objects)} objects',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+        except Exception as e:
+            log.info(dict(Kind='Action', Type='ShadeObject', View=self.View.Name,
+                          **gu.func_params(), Target=name_substring, Result=f'Invalid|{e}',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            log.debug(e)
+
+    def UnshadeObject(self, name_substring: str):
+        """
+        This action removes shading from all objects whose name contains the
+        specified substring.
+
+        :scope viewobjectglobalpocket
+        :mtype action
+        """
+        log.debug(f"UnshadeObject called with name_substring={name_substring!r}")
+
+        matching_objects = self._find_objects_by_name_substring(name_substring)
+
+        if not matching_objects:
+            log.info(dict(Kind='Action', Type='UnshadeObject', View=self.View.Name,
+                          **gu.func_params(), Target=name_substring, Result='Invalid|NoMatchingObjects',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+            return
+
+        try:
+            unshaded_count = 0
+            for _view_id, obj_id, _obj_name in matching_objects:
+                if obj_id in self.parent().shaded_objects:
+                    del self.parent().shaded_objects[obj_id]
+                    unshaded_count += 1
+                if obj_id in self.object_pics:
+                    self.object_pics[obj_id].clear_shade()
+
+            log.info(dict(Kind='Action', Type='UnshadeObject', View=self.View.Name,
+                          **gu.func_params(), Target=name_substring,
+                          Result=f'Valid|Unshaded|{unshaded_count} objects',
+                          EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
+        except Exception as e:
+            log.info(dict(Kind='Action', Type='UnshadeObject', View=self.View.Name,
+                          **gu.func_params(), Target=name_substring, Result=f'Invalid|{e}',
                           EnvTime=self.get_task_elapsed(), ViewTime=self.view_elapsed()))
             log.debug(e)
 

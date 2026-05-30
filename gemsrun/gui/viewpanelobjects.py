@@ -60,7 +60,6 @@ from PySide6.QtWidgets import QLabel
 from gemsrun import log
 from gemsrun.gui.viewpanelutils import (
     configure_drag_visuals,
-    drag_pixmap_with_hand,
     get_custom_cursors,
     pixmap_to_pointer,
 )
@@ -125,6 +124,7 @@ class ViewImageObject(QLabel):
         self.polygon_points = polygon_points or []
         self._mask_needs_update = bool(self.polygon_points)  # Flag for deferred mask setup
         self._highlight_info: dict | None = None  # Stores {"color": QColor, "thickness": int}
+        self._shade_info: dict | None = None  # Stores {"color": QColor} for filled shading
 
         # Check if this is an invisible object with click actions (hotspot)
         has_click_action = any(
@@ -219,6 +219,20 @@ class ViewImageObject(QLabel):
         self._highlight_info = None
         self.update()
 
+    def set_shade(self, color: QColor):
+        """Set a shade (filled overlay) to be drawn over this object's polygon/bounds.
+
+        Args:
+            color: Color for the shade fill (including alpha for transparency)
+        """
+        self._shade_info = {"color": color}
+        self.update()
+
+    def clear_shade(self):
+        """Remove any shade from this object."""
+        self._shade_info = None
+        self.update()
+
     def _set_polygon_mask(self):
         """Set a mask on the widget so only polygon area receives mouse events."""
         if not self.polygon_points:
@@ -278,6 +292,21 @@ class ViewImageObject(QLabel):
             pen = QPen(self._highlight_info["color"], self._highlight_info["thickness"])
             pen.setStyle(Qt.PenStyle.SolidLine)
             painter.setPen(pen)
+            if self.polygon_points:
+                geom = self.geometry()
+                local_points = [QPoint(p[0] - geom.x(), p[1] - geom.y()) for p in self.polygon_points]
+                polygon = QPolygon(local_points)
+                painter.drawPolygon(polygon)
+            else:
+                # Fallback to rectangle if no polygon points
+                r = self.rect()
+                painter.drawRect(QRect(r.left(), r.top(), r.width() - 1, r.height() - 1))
+
+        # Draw shade (filled overlay) if set via ShadeObject action
+        if self._shade_info:
+            shade_color = self._shade_info["color"]
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(shade_color)
             if self.polygon_points:
                 geom = self.geometry()
                 local_points = [QPoint(p[0] - geom.x(), p[1] - geom.y()) for p in self.polygon_points]
