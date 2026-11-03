@@ -103,14 +103,14 @@ def main_command(
     env_path: Annotated[str | None, cyclopts.Parameter(help="GEMS environment filename (positional or --file).")] = None,
     user_arg: Annotated[str | None, cyclopts.Parameter(help="User ID string, used to create data file name.")] = None,
     *,
-    fname: Annotated[str | None, cyclopts.Parameter("--file", "-f", help="Specify your gems environment filename.")] = None,
-    user: Annotated[str | None, cyclopts.Parameter("--user", "-u", help="Specify user ID string.")] = None,
-    skipdata: Annotated[bool | None, cyclopts.Parameter("--skipdata", "-s", negative="--no-skipdata", help="Suppress the output data file.")] = None,
-    overwrite: Annotated[bool | None, cyclopts.Parameter("--overwrite", "-o", negative="--no-overwrite", help="Enable overwriting of duplicate output data.")] = None,
-    debug: Annotated[bool | None, cyclopts.Parameter("--debug", "-d", negative="--no-debug", help="Write extra debugging information to terminal.")] = None,
-    skipmedia: Annotated[bool | None, cyclopts.Parameter("--skipmedia", "-k", negative="--no-skipmedia", help="Disable playback of audio and video files.")] = None,
-    skipgui: Annotated[bool, cyclopts.Parameter("--skipgui", "-g", help="Suppress GUI prompt for missing command-line parameters.")] = False,
-    fullscreen: Annotated[bool | None, cyclopts.Parameter("--fullscreen", "-F", negative="--no-fullscreen", help="Launch runner in fullscreen.")] = None,
+    fname: Annotated[str | None, cyclopts.Parameter(name=["--file", "-f"], help="Specify your gems environment filename.")] = None,
+    user: Annotated[str | None, cyclopts.Parameter(name=["--user", "-u"], help="Specify user ID string.")] = None,
+    skipdata: Annotated[bool | None, cyclopts.Parameter(name=["--skipdata", "-s"], help="Suppress the output data file.")] = None,
+    overwrite: Annotated[bool | None, cyclopts.Parameter(name=["--overwrite", "-o"], help="Enable overwriting of duplicate output data.")] = None,
+    debug: Annotated[bool | None, cyclopts.Parameter(name=["--debug", "-d"], help="Write extra debugging information to terminal.")] = None,
+    skipmedia: Annotated[bool | None, cyclopts.Parameter(name=["--skipmedia", "-k"], help="Disable playback of audio and video files.")] = None,
+    skipgui: Annotated[bool, cyclopts.Parameter(name=["--skipgui", "-g"], help="Suppress GUI prompt for missing command-line parameters.")] = False,
+    fullscreen: Annotated[bool | None, cyclopts.Parameter(name=["--fullscreen", "-F"], help="Launch runner in fullscreen.")] = None,
 ):
     """Run GEMSrun with the specified environment file."""
     cli_fname = fname or env_path or ""
