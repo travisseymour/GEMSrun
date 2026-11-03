@@ -24,11 +24,13 @@ if sys.platform == "linux":
     suppress = "qt.multimedia.*=false;qt.core.qfuture.*=false"
     os.environ["QT_LOGGING_RULES"] = f"{rules};{suppress}" if rules else suppress
 
+from typing import Annotated
+
+import cyclopts
 from munch import Munch
 from PySide6.QtCore import QCoreApplication, QSettings, Qt
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
-import typer
 
 import gemsrun
 from gemsrun.gui import mainwindow
@@ -36,15 +38,18 @@ from gemsrun.gui.parawindow import ParamDialog
 from gemsrun.session import sessionsetup as ssetup
 from gemsrun.utils import apputils, audiocache
 
-app = typer.Typer(add_completion=False, help="GEMSrun command line interface.")
+
+def _get_version() -> str:
+    from importlib.metadata import version
+
+    return f"GEMSrun {version('GEMSrun')}"
 
 
-def _version_callback(value: bool):
-    if value:
-        from importlib.metadata import version
-
-        print(f"GEMSrun {version('GEMSrun')}")
-        raise typer.Exit()
+app = cyclopts.App(
+    name="GEMSrun",
+    help="GEMSrun command line interface.",
+    version=_get_version,
+)
 
 
 def _preload_audio_with_spinner(db: Munch):
@@ -93,49 +98,19 @@ def _handle_clear_cache():
         sys.exit(1)
 
 
-@app.callback(invoke_without_command=True)
+@app.default
 def main_command(
-    env_path: str | None = typer.Argument(
-        None,
-        metavar="FILENAME",
-        help="GEMS environment filename (positional or --file).",
-    ),
-    user_arg: str | None = typer.Argument(
-        None, metavar="USERID", help="User ID string, used to create data file name."
-    ),
-    fname: str | None = typer.Option(None, "--file", "-f", help="Specify your gems environment filename."),
-    user: str | None = typer.Option(None, "--user", "-u", help="Specify user ID string."),
-    skipdata: bool | None = typer.Option(None, "--skipdata/--no-skipdata", "-s", help="Suppress the output data file."),
-    overwrite: bool | None = typer.Option(
-        None,
-        "--overwrite/--no-overwrite",
-        "-o",
-        help="Enable overwriting of duplicate output data.",
-    ),
-    debug: bool | None = typer.Option(
-        None,
-        "--debug/--no-debug",
-        "-d",
-        help="Write extra debugging information to terminal.",
-    ),
-    skipmedia: bool | None = typer.Option(
-        None,
-        "--skipmedia/--no-skipmedia",
-        "-k",
-        help="Disable playback of audio and video files.",
-    ),
-    skipgui: bool = typer.Option(
-        False,
-        "--skipgui",
-        "-g",
-        help="Suppress GUI prompt for missing command-line parameters.",
-    ),
-    fullscreen: bool | None = typer.Option(
-        None, "--fullscreen/--no-fullscreen", "-F", help="Launch runner in fullscreen."
-    ),
-    version: bool = typer.Option(
-        False, "--version", "-V", callback=_version_callback, is_eager=True, help="Show version and exit."
-    ),
+    env_path: Annotated[str | None, cyclopts.Parameter(help="GEMS environment filename (positional or --file).")] = None,
+    user_arg: Annotated[str | None, cyclopts.Parameter(help="User ID string, used to create data file name.")] = None,
+    *,
+    fname: Annotated[str | None, cyclopts.Parameter("--file", "-f", help="Specify your gems environment filename.")] = None,
+    user: Annotated[str | None, cyclopts.Parameter("--user", "-u", help="Specify user ID string.")] = None,
+    skipdata: Annotated[bool | None, cyclopts.Parameter("--skipdata", "-s", negative="--no-skipdata", help="Suppress the output data file.")] = None,
+    overwrite: Annotated[bool | None, cyclopts.Parameter("--overwrite", "-o", negative="--no-overwrite", help="Enable overwriting of duplicate output data.")] = None,
+    debug: Annotated[bool | None, cyclopts.Parameter("--debug", "-d", negative="--no-debug", help="Write extra debugging information to terminal.")] = None,
+    skipmedia: Annotated[bool | None, cyclopts.Parameter("--skipmedia", "-k", negative="--no-skipmedia", help="Disable playback of audio and video files.")] = None,
+    skipgui: Annotated[bool, cyclopts.Parameter("--skipgui", "-g", help="Suppress GUI prompt for missing command-line parameters.")] = False,
+    fullscreen: Annotated[bool | None, cyclopts.Parameter("--fullscreen", "-F", negative="--no-fullscreen", help="Launch runner in fullscreen.")] = None,
 ):
     """Run GEMSrun with the specified environment file."""
     cli_fname = fname or env_path or ""
@@ -211,7 +186,7 @@ def main_command(
                 f'"{cli_fname}" is not a valid GEMS environment file.',
                 QMessageBox.StandardButton.Ok,
             )
-            raise typer.Exit(code=1)
+            sys.exit(1)
         elif not isinstance(cli_user, str) or not cli_user:
             _ = QMessageBox.critical(
                 None,
@@ -220,7 +195,7 @@ def main_command(
                 f'"{cli_user}" is not a valid string.',
                 QMessageBox.StandardButton.Ok,
             )
-            raise typer.Exit(code=1)
+            sys.exit(1)
 
         settings.setValue("debug", args.debug)
         session = ssetup.setup_session(args=cli_only_args)
@@ -249,12 +224,12 @@ def main_command(
                     f"An unexpected error occurred:\n\n{e}\n\n{traceback.format_exc()}",
                     QMessageBox.StandardButton.Ok,
                 )
-                raise typer.Exit(code=1) from None
+                sys.exit(1)
 
             if not session.ok:
-                raise typer.Exit(code=1)
+                sys.exit(1)
         else:
-            raise typer.Exit(code=1)
+            sys.exit(1)
 
     if args.fullscreen:
         session.database.Global.Options.DisplayType = "fullscreen"
@@ -274,7 +249,7 @@ def main_command(
         main_win.showNormal()
 
     exit_code = gemsrun.APPLICATION.exec()
-    raise typer.Exit(code=exit_code)
+    sys.exit(exit_code)
 
 
 def main():
@@ -282,7 +257,7 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == "clear-cache":
         _handle_clear_cache()
     else:
-        app(prog_name="GEMSrun")
+        app()
 
 
 if __name__ == "__main__":
